@@ -66,8 +66,8 @@ std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extractio
      pcl::VoxelGrid<pcl::PointXYZRGB> vg;
      vg.setInputCloud (cloud);
      vg.setLeafSize (0.0015f, 0.0015f, 0.0015f);
-     vg.filter (*cloud_filtered);
-     *cloud=*cloud_filtered;
+     //vg.filter (*cloud_filtered);
+     //*cloud=*cloud_filtered;
 
   //   pcl::PassThrough<pcl::PointXYZRGB> pass1;
   //   pass1.setInputCloud(cloud);
@@ -178,6 +178,7 @@ void ransac_detect(PointCloud cluster_to_detect)
     pcl::MovingLeastSquares<pcl::PointXYZRGB, pcl::PointXYZRGB> mls ;
     pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> sor2;
 
+/*
     mls.setComputeNormals (false);
         // Set parameters
     mls.setInputCloud (cloud);
@@ -204,7 +205,7 @@ void ransac_detect(PointCloud cluster_to_detect)
         // Reconstruct
     mls.process (*cloud_filtered);
     cloud=cloud_filtered;
-
+*/
     std::vector<int> inliers,in_circle;
 
     pcl::SampleConsensusModelLine<pcl::PointXYZRGB>::Ptr model_line (new pcl::SampleConsensusModelLine<pcl::PointXYZRGB> (cloud));
@@ -306,7 +307,7 @@ find_cloud_from_kinect_head=false;
   transformata_finala=calculate_transformation(cluster_vector[0]);
   ransac_detect(cluster_vector[0]);
 
-  ros::ServiceServer service = nh.advertiseService("send_pose", send);
+  ros::ServiceServer service = nh.advertiseService("/brio_assembly_vision", send);
 
   ros::spin();
 
