@@ -19,7 +19,7 @@
 #include <eigen3/Eigen/src/Geometry/Quaternion.h>
 #include<pcl/common/centroid.h>
 #include <brio_assembly_vision/SendStampedPose.h>
-
+#include<brio_assembly_vision/Finish_Movement.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/sample_consensus/ransac.h>
 #include<pcl/sample_consensus/sac_model_line.h>
@@ -32,19 +32,25 @@
 
 
 ros::Publisher pub;
-bool find_cloud_from_kinect_head =false;
+bool find_cloud_from_kinect_head =false,finish_mv=true;
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloud;
 PointCloud::Ptr cloud (new PointCloud);
+void ransac_detect(PointCloud cluster_to_detect);
 
 Eigen::Matrix4d transformata_finala;
 
 Eigen::Quaternionf createQuaternion();
+std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extraction(pcl::PointCloud <pcl::PointXYZRGB>::Ptr cloud);
+Eigen::Matrix4d calculate_transformation (PointCloud cloud_cluster);
 
 void cloud_cb (const sensor_msgs::PointCloud2ConstPtr& input)
 {
-
+   //ROS_INFO("I HAVE IMAGE ON TOPIC FROM KINECT");
+if(finish_mv==true)
+   {
+    ROS_INFO("CALCULATE TRANSFORMATION FOR CLUSTER");
   pcl::PointCloud<pcl::PointXYZRGB> cloud_filtered;
   pcl::fromROSMsg(*input, cloud_filtered);
 
@@ -53,6 +59,16 @@ void cloud_cb (const sensor_msgs::PointCloud2ConstPtr& input)
 
     *cloud=cloud_filtered;
     find_cloud_from_kinect_head=true;
+
+    std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_vector;
+    cluster_vector=cluster_extraction(cloud);
+    // GLOBAL TRANSFORMATA FINALA //
+  //  Eigen::Matrix4d transformata_finala;
+    // GLOBAL TRANSFORMATA FINALA //
+    transformata_finala=calculate_transformation(cluster_vector[0]);
+    ransac_detect(cluster_vector[0]);
+    finish_mv=false;
+    }
   }
   //pub.publish(input);
 }
@@ -145,14 +161,14 @@ Eigen::Matrix4d calculate_transformation (PointCloud cloud_cluster)
     // Compute the 3x3 covariance matrix
     pcl::computeCovarianceMatrix(*cloud, xyz_centroid, covariance_matrix);
 
-    std::cout<<"Centroid"<<std::endl << xyz_centroid << std::endl;
+    //std::cout<<"Centroid"<<std::endl << xyz_centroid << std::endl;
 
-    std::cout<<"Covariance Matrix"<<std::endl << covariance_matrix << std::endl;
+    //std::cout<<"Covariance Matrix"<<std::endl << covariance_matrix << std::endl;
 
     Eigen::EigenSolver <Eigen::Matrix3f> es(covariance_matrix);
-    std::cout<<std::endl<<"Eigen vectors:"<<std::endl<<es.pseudoEigenvectors()<<std::endl;
+//    std::cout<<std::endl<<"Eigen vectors:"<<std::endl<<es.pseudoEigenvectors()<<std::endl;
     result=es.pseudoEigenvectors();
-    std::cout<<std::endl<<"Eigen values:"<<std::endl<<es.eigenvalues()<<std::endl;
+//    std::cout<<std::endl<<"Eigen values:"<<std::endl<<es.eigenvalues()<<std::endl;
 
     Eigen::Matrix4d transformata_finala=Eigen::MatrixXd::Identity(4,4);
     for(int i=0;i<3;i++)
@@ -234,20 +250,19 @@ void ransac_detect(PointCloud cluster_to_detect)
       std::cout<<"Am gasit semicerc"<<std::endl;
    }
 
-  pcl::visualization::PCLVisualizer viewer ("ICP demo");
-  int v1(0); int v2(1);
-  viewer.createViewPort (0.0, 0.0, 0.5, 1.0, v1);
-  viewer.createViewPort (0.5, 0.0, 1.0, 1.0, v2);
-  //viewer.addCoordinateSystem(0.1,0);
-  viewer.addPointCloud (cloud, "cloud",v1);
-    viewer.addPointCloud (final, "final",v2);
-    while (!viewer.wasStopped ()) {
-        viewer.spinOnce ();
-    }
+//  pcl::visualization::PCLVisualizer viewer ("ICP demo");
+//  int v1(0); int v2(1);
+//  viewer.createViewPort (0.0, 0.0, 0.5, 1.0, v1);
+//  viewer.createViewPort (0.5, 0.0, 1.0, 1.0, v2);
+//  //viewer.addCoordinateSystem(0.1,0);
+//  viewer.addPointCloud (cloud, "cloud",v1);
+//    viewer.addPointCloud (final, "final",v2);
+//    while (!viewer.wasStopped ()) {
+//        viewer.spinOnce ();
+//    }
 }
 
-bool send(brio_assembly_vision::SendStampedPoseRequest  &req,
-         brio_assembly_vision::SendStampedPoseResponse &res)
+bool send(brio_assembly_vision::SendStampedPoseRequest  &req, brio_assembly_vision::SendStampedPoseResponse &res)
 {
 
     ROS_INFO("Send TransformedPose");
@@ -263,6 +278,15 @@ bool send(brio_assembly_vision::SendStampedPoseRequest  &req,
       res.msg.pose.orientation.x = (double)quat.x();
       res.msg.pose.orientation.y = (double)quat.y();
       res.msg.pose.orientation.z = (double)quat.z();
+
+  return true;
+
+}
+bool finish_movement(brio_assembly_vision::Finish_MovementRequest  &req, brio_assembly_vision::Finish_MovementResponse &res)
+{
+
+    ROS_INFO("Finish Movement triggerd");
+    finish_mv=true;
 
   return true;
 
@@ -294,21 +318,21 @@ int main (int argc, char** argv)
     //pub = nh.advertise<sensor_msgs::PointCloud2> ("output", 1);
 
     // Spin
-  while(!find_cloud_from_kinect_head)
-  {
-    ros::spinOnce();
-  }
-find_cloud_from_kinect_head=false;
-  std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_vector;
-  cluster_vector=cluster_extraction(cloud);
-  // GLOBAL TRANSFORMATA FINALA //
-//  Eigen::Matrix4d transformata_finala;
-  // GLOBAL TRANSFORMATA FINALA //
-  transformata_finala=calculate_transformation(cluster_vector[0]);
-  ransac_detect(cluster_vector[0]);
+//  while(!find_cloud_from_kinect_head)
+//  {
+//    ros::spinOnce();
+//  }
 
-  ros::ServiceServer service = nh.advertiseService("/brio_assembly_vision", send);
+//  std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_vector;
+//  cluster_vector=cluster_extraction(cloud);
+//  // GLOBAL TRANSFORMATA FINALA //
+// //  Eigen::Matrix4d transformata_finala;
+//  // GLOBAL TRANSFORMATA FINALA //
+//  transformata_finala=calculate_transformation(cluster_vector[0]);
+//  ransac_detect(cluster_vector[0]);
 
+  ros::ServiceServer service1 = nh.advertiseService("/brio_assembly_vision", send);
+  ros::ServiceServer service2 = nh.advertiseService("/brio_finish_movement", finish_movement);
   ros::spin();
 
     return 0;
