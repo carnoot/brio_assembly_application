@@ -68,7 +68,7 @@ Control::Control(){
 
     std::cout << "Setting up Service Client!" << std::endl;
     this->client = this->n.serviceClient<brio_assembly_vision::TrasformStamped>(
-                "get_transformStamped");
+                "/brio_assembly_vision");
     this->serviceName = "Vision";
 }
 
@@ -114,7 +114,7 @@ void Control::copyTransformIntoThread(){
 
 int main(int argc, char** argv) {
 
-    ros::init(argc, argv, "CONTROL ROS NODE");
+    ros::init(argc, argv, "CONTROL");
     Control contr;
     while (1){
         contr.callVisionService();
