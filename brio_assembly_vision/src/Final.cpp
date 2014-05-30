@@ -48,30 +48,30 @@ Eigen::Matrix4d calculate_transformation (PointCloud cloud_cluster);
 
 void cloud_cb (const sensor_msgs::PointCloud2ConstPtr& input)
 {
-   //ROS_INFO("I HAVE IMAGE ON TOPIC FROM KINECT");
-if(finish_mv==true)
-   {
-    ROS_INFO("CALCULATE TRANSFORMATION FOR CLUSTER");
-  pcl::PointCloud<pcl::PointXYZRGB> cloud_filtered;
-  pcl::fromROSMsg(*input, cloud_filtered);
+    //ROS_INFO("I HAVE IMAGE ON TOPIC FROM KINECT");
+    if(finish_mv==true)
+    {
+        ROS_INFO("CALCULATE TRANSFORMATION FOR CLUSTER");
+        pcl::PointCloud<pcl::PointXYZRGB> cloud_filtered;
+        pcl::fromROSMsg(*input, cloud_filtered);
 
-  if(cloud_filtered.size()>0){
-    pcl::io::savePCDFileASCII ("test_pcd.pcd", cloud_filtered);
+        if(cloud_filtered.size()>0){
+            pcl::io::savePCDFileASCII ("test_pcd.pcd", cloud_filtered);
 
-    *cloud=cloud_filtered;
-    find_cloud_from_kinect_head=true;
+            *cloud=cloud_filtered;
+            find_cloud_from_kinect_head=true;
 
-    std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_vector;
-    cluster_vector=cluster_extraction(cloud);
-    // GLOBAL TRANSFORMATA FINALA //
-  //  Eigen::Matrix4d transformata_finala;
-    // GLOBAL TRANSFORMATA FINALA //
-    transformata_finala=calculate_transformation(cluster_vector[0]);
-    ransac_detect(cluster_vector[0]);
-    finish_mv=false;
+            std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_vector;
+            cluster_vector=cluster_extraction(cloud);
+            // GLOBAL TRANSFORMATA FINALA //
+            //  Eigen::Matrix4d transformata_finala;
+            // GLOBAL TRANSFORMATA FINALA //
+            transformata_finala=calculate_transformation(cluster_vector[0]);
+            ransac_detect(cluster_vector[0]);
+            finish_mv=false;
+        }
     }
-  }
-  //pub.publish(input);
+    //pub.publish(input);
 }
 
 std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extraction(pcl::PointCloud <pcl::PointXYZRGB>::Ptr cloud)
@@ -79,19 +79,19 @@ std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extractio
     pcl::search::Search <pcl::PointXYZRGB>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZRGB> > (new pcl::search::KdTree<pcl::PointXYZRGB> );
     pcl::PCDWriter writer;
     pcl::PointCloud <pcl::PointXYZRGB>::Ptr cloud_filtered (new pcl::PointCloud <pcl::PointXYZRGB>);
-     //Create the filtering object: downsample the dataset using a leaf size of 1cm
-     pcl::VoxelGrid<pcl::PointXYZRGB> vg;
-     vg.setInputCloud (cloud);
-     vg.setLeafSize (0.0015f, 0.0015f, 0.0015f);
-     //vg.filter (*cloud_filtered);
-     //*cloud=*cloud_filtered;
+    //Create the filtering object: downsample the dataset using a leaf size of 1cm
+    pcl::VoxelGrid<pcl::PointXYZRGB> vg;
+    vg.setInputCloud (cloud);
+    vg.setLeafSize (0.0015f, 0.0015f, 0.0015f);
+    //vg.filter (*cloud_filtered);
+    //*cloud=*cloud_filtered;
 
-  //   pcl::PassThrough<pcl::PointXYZRGB> pass1;
-  //   pass1.setInputCloud(cloud);
-  //   pass1.setFilterFieldName("x");
-  //   pass1.setFilterLimits(0.0, 0.2);
-  //   pass1.filter(*cloud_filtered);
-  //   *cloud=*cloud_filtered;
+    //   pcl::PassThrough<pcl::PointXYZRGB> pass1;
+    //   pass1.setInputCloud(cloud);
+    //   pass1.setFilterFieldName("x");
+    //   pass1.setFilterLimits(0.0, 0.2);
+    //   pass1.filter(*cloud_filtered);
+    //   *cloud=*cloud_filtered;
 
     pcl::IndicesPtr indices (new std::vector <int>);
     pcl::PassThrough<pcl::PointXYZRGB> pass;
@@ -108,9 +108,9 @@ std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extractio
     reg.setDistanceThreshold (10);
     reg.setPointColorThreshold (7); //color change , mic=>simte multe  schimbari de culoare
     reg.setRegionColorThreshold (30);
-  //  reg.setDistanceThreshold (10);
-  //  reg.setPointColorThreshold (15); //color change , mic=>simte multe  schimbari de culoare
-  //  reg.setRegionColorThreshold (30);
+    //  reg.setDistanceThreshold (10);
+    //  reg.setPointColorThreshold (15); //color change , mic=>simte multe  schimbari de culoare
+    //  reg.setRegionColorThreshold (30);
     reg.setMinClusterSize (800);
     reg.setMaxClusterSize(4900);
     std::vector <pcl::PointIndices> clusters;
@@ -118,31 +118,31 @@ std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extractio
     std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > pcd_vector;
 
     int j = 0;
-      for (std::vector<pcl::PointIndices>::const_iterator it = clusters.begin (); it != clusters.end (); ++it)
-      {
+    for (std::vector<pcl::PointIndices>::const_iterator it = clusters.begin (); it != clusters.end (); ++it)
+    {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
         for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
-          cloud_cluster->points.push_back (cloud->points[*pit]); //*
+            cloud_cluster->points.push_back (cloud->points[*pit]); //*
         cloud_cluster->width = cloud_cluster->points.size ();
         cloud_cluster->height = 1;
         cloud_cluster->is_dense = true;
 
-//        std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
-//        std::stringstream ss;
-//        ss << "cluster_" << j << ".pcd";
-//        writer.write<pcl::PointXYZRGB> (ss.str (), *cloud_cluster, false); //*
-    pcd_vector.push_back(*cloud_cluster);
+        //        std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+        //        std::stringstream ss;
+        //        ss << "cluster_" << j << ".pcd";
+        //        writer.write<pcl::PointXYZRGB> (ss.str (), *cloud_cluster, false); //*
+        pcd_vector.push_back(*cloud_cluster);
         j++;
-      }
-//      for(int i=0;i<pcd_vector.size();i++)
-//      {
-//                  std::stringstream ss;
-//                  ss << "cloud_" << i<< ".pcd";
-//                  writer.write<pcl::PointXYZRGB> (ss.str (), pcd_vector[i], false); //*
-//      }
-std::cout<<"Nmb of cluseters find:"<<pcd_vector.size()<<std::endl;
+    }
+    //      for(int i=0;i<pcd_vector.size();i++)
+    //      {
+    //                  std::stringstream ss;
+    //                  ss << "cloud_" << i<< ".pcd";
+    //                  writer.write<pcl::PointXYZRGB> (ss.str (), pcd_vector[i], false); //*
+    //      }
+    std::cout<<"Nmb of cluseters find:"<<pcd_vector.size()<<std::endl;
 
-return pcd_vector;
+    return pcd_vector;
 
 }
 
@@ -150,7 +150,7 @@ Eigen::Matrix4d calculate_transformation (PointCloud cloud_cluster)
 {
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
-  *cloud=cloud_cluster;
+    *cloud=cloud_cluster;
 
     // Placeholder for the 3x3 covariance matrix at each surface patch
     Eigen::Matrix3f covariance_matrix,result;
@@ -167,14 +167,14 @@ Eigen::Matrix4d calculate_transformation (PointCloud cloud_cluster)
     //std::cout<<"Covariance Matrix"<<std::endl << covariance_matrix << std::endl;
 
     Eigen::EigenSolver <Eigen::Matrix3f> es(covariance_matrix);
-//    std::cout<<std::endl<<"Eigen vectors:"<<std::endl<<es.pseudoEigenvectors()<<std::endl;
+    //    std::cout<<std::endl<<"Eigen vectors:"<<std::endl<<es.pseudoEigenvectors()<<std::endl;
     result=es.pseudoEigenvectors();
-//    std::cout<<std::endl<<"Eigen values:"<<std::endl<<es.eigenvalues()<<std::endl;
+    //    std::cout<<std::endl<<"Eigen values:"<<std::endl<<es.eigenvalues()<<std::endl;
 
     Eigen::Matrix4d transformata_finala=Eigen::MatrixXd::Identity(4,4);
     for(int i=0;i<3;i++)
-       for(int j=0;j<3;j++)
-           transformata_finala(i,j)=result(i,j);
+        for(int j=0;j<3;j++)
+            transformata_finala(i,j)=result(i,j);
     for(int i=0;i<3;i++)
         transformata_finala(i,3)=xyz_centroid(i);
     std::cout<<"Final transform"<<std::endl<<transformata_finala<<std::endl;
@@ -195,7 +195,7 @@ void ransac_detect(PointCloud cluster_to_detect)
     pcl::MovingLeastSquares<pcl::PointXYZRGB, pcl::PointXYZRGB> mls ;
     pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> sor2;
 
-/*
+    /*
     mls.setComputeNormals (false);
         // Set parameters
     mls.setInputCloud (cloud);
@@ -238,29 +238,29 @@ void ransac_detect(PointCloud cluster_to_detect)
     ransac2.computeModel();
     ransac2.getInliers(in_circle);
 
-  std::cout<<"inliers line size="<<inliers.size()<<std::endl;
-  std::cout<<"inliers circle size="<<in_circle.size()<<std::endl;
-  if(inliers.size()>=in_circle.size())
-   { // copies all inliers of the model computed to another PointCloud
-    pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud, inliers, *final);
-    std::cout<<"Am gasit linie"<<std::endl;
-  }
-  else
-   {
-      pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud, in_circle, *final);
-      std::cout<<"Am gasit semicerc"<<std::endl;
-   }
+    std::cout<<"inliers line size="<<inliers.size()<<std::endl;
+    std::cout<<"inliers circle size="<<in_circle.size()<<std::endl;
+    if(inliers.size()>=in_circle.size())
+    { // copies all inliers of the model computed to another PointCloud
+        pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud, inliers, *final);
+        std::cout<<"Am gasit linie"<<std::endl;
+    }
+    else
+    {
+        pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud, in_circle, *final);
+        std::cout<<"Am gasit semicerc"<<std::endl;
+    }
 
-//  pcl::visualization::PCLVisualizer viewer ("ICP demo");
-//  int v1(0); int v2(1);
-//  viewer.createViewPort (0.0, 0.0, 0.5, 1.0, v1);
-//  viewer.createViewPort (0.5, 0.0, 1.0, 1.0, v2);
-//  //viewer.addCoordinateSystem(0.1,0);
-//  viewer.addPointCloud (cloud, "cloud",v1);
-//    viewer.addPointCloud (final, "final",v2);
-//    while (!viewer.wasStopped ()) {
-//        viewer.spinOnce ();
-//    }
+    //  pcl::visualization::PCLVisualizer viewer ("ICP demo");
+    //  int v1(0); int v2(1);
+    //  viewer.createViewPort (0.0, 0.0, 0.5, 1.0, v1);
+    //  viewer.createViewPort (0.5, 0.0, 1.0, 1.0, v2);
+    //  //viewer.addCoordinateSystem(0.1,0);
+    //  viewer.addPointCloud (cloud, "cloud",v1);
+    //    viewer.addPointCloud (final, "final",v2);
+    //    while (!viewer.wasStopped ()) {
+    //        viewer.spinOnce ();
+    //    }
 }
 
 bool send(brio_assembly_vision::TrasformStampedRequest  &req, brio_assembly_vision::TrasformStampedResponse &res)
@@ -270,18 +270,18 @@ bool send(brio_assembly_vision::TrasformStampedRequest  &req, brio_assembly_visi
 
     Eigen::Quaternionf quat;
     quat = createQuaternion();
-      res.msg.child_frame_id = "brio_piece_frame";
-      res.msg.header.frame_id = "head_mount_kinect_rgb_optical_frame";
-      res.msg.transform.translation.x = transformata_finala(0,3);
-      res.msg.transform.translation.y = transformata_finala(1,3);
-      res.msg.transform.translation.z = transformata_finala(2,3);
+    res.msg.child_frame_id = "brio_piece_frame";
+    res.msg.header.frame_id = "head_mount_kinect_rgb_optical_frame";
+    res.msg.transform.translation.x = transformata_finala(0,3);
+    res.msg.transform.translation.y = transformata_finala(1,3);
+    res.msg.transform.translation.z = transformata_finala(2,3);
 
-      res.msg.transform.rotation.w = (double)quat.w();
-      res.msg.transform.rotation.x = (double)quat.x();
-      res.msg.transform.rotation.y = (double)quat.y();
-      res.msg.transform.rotation.z = (double)quat.z();
+    res.msg.transform.rotation.w = (double)quat.w();
+    res.msg.transform.rotation.x = (double)quat.x();
+    res.msg.transform.rotation.y = (double)quat.y();
+    res.msg.transform.rotation.z = (double)quat.z();
 
-  return true;
+    return true;
 
 }
 bool finish_movement(brio_assembly_vision::Finish_MovementRequest  &req, brio_assembly_vision::Finish_MovementResponse &res)
@@ -290,20 +290,20 @@ bool finish_movement(brio_assembly_vision::Finish_MovementRequest  &req, brio_as
     ROS_INFO("Finish Movement triggerd");
     finish_mv=true;
 
-  return true;
+    return true;
 
 }
 
 Eigen::Quaternionf createQuaternion(){
-      Eigen::Matrix3f rotation;
+    Eigen::Matrix3f rotation;
 
-      for (int a = 0; a < 3; a++)
-          for (int b = 0; b < 3; b++)
-              rotation(a,b) = transformata_finala(a,b);
+    for (int a = 0; a < 3; a++)
+        for (int b = 0; b < 3; b++)
+            rotation(a,b) = transformata_finala(a,b);
 
-      Eigen::Quaternionf quat (rotation);
+    Eigen::Quaternionf quat (rotation);
 
-      return quat;
+    return quat;
 }
 
 
@@ -320,22 +320,22 @@ int main (int argc, char** argv)
     //pub = nh.advertise<sensor_msgs::PointCloud2> ("output", 1);
 
     // Spin
-//  while(!find_cloud_from_kinect_head)
-//  {
-//    ros::spinOnce();
-//  }
+    //  while(!find_cloud_from_kinect_head)
+    //  {
+    //    ros::spinOnce();
+    //  }
 
-//  std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_vector;
-//  cluster_vector=cluster_extraction(cloud);
-//  // GLOBAL TRANSFORMATA FINALA //
-// //  Eigen::Matrix4d transformata_finala;
-//  // GLOBAL TRANSFORMATA FINALA //
-//  transformata_finala=calculate_transformation(cluster_vector[0]);
-//  ransac_detect(cluster_vector[0]);
+    //  std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_vector;
+    //  cluster_vector=cluster_extraction(cloud);
+    //  // GLOBAL TRANSFORMATA FINALA //
+    // //  Eigen::Matrix4d transformata_finala;
+    //  // GLOBAL TRANSFORMATA FINALA //
+    //  transformata_finala=calculate_transformation(cluster_vector[0]);
+    //  ransac_detect(cluster_vector[0]);
 
-  ros::ServiceServer service1 = nh.advertiseService("/brio_assembly_vision", send);
-  ros::ServiceServer service2 = nh.advertiseService("/brio_finish_movement", finish_movement);
-  ros::spin();
+    ros::ServiceServer service1 = nh.advertiseService("/brio_assembly_vision", send);
+    ros::ServiceServer service2 = nh.advertiseService("/brio_finish_movement", finish_movement);
+    ros::spin();
 
     return 0;
 }
