@@ -270,7 +270,8 @@ bool send(brio_assembly_vision::TrasformStampedRequest  &req, brio_assembly_visi
 
     Eigen::Quaternionf quat;
     quat = createQuaternion();
-
+      res.msg.child_frame_id = "brio_piece_frame";
+      res.msg.header.frame_id = "head_mount_kinect_rgb_optical_frame";
       res.msg.transform.translation.x = transformata_finala(0,3);
       res.msg.transform.translation.y = transformata_finala(1,3);
       res.msg.transform.translation.z = transformata_finala(2,3);
