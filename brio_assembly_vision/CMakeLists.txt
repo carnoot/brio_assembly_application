@@ -23,7 +23,7 @@ include(${VTK_USE_FILE})
 
 add_service_files(
 	FILES
-	SendStampedPose.srv
+        TrasformStamped.srv
 	Finish_Movement.srv
 )
 

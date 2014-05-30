@@ -18,8 +18,9 @@
 #include <eigen3/Eigen/src/Core/MatrixBase.h>
 #include <eigen3/Eigen/src/Geometry/Quaternion.h>
 #include<pcl/common/centroid.h>
-#include <brio_assembly_vision/SendStampedPose.h>
+#include <brio_assembly_vision/TrasformStamped.h>
 #include<brio_assembly_vision/Finish_Movement.h>
+
 #include <pcl/filters/extract_indices.h>
 #include <pcl/sample_consensus/ransac.h>
 #include<pcl/sample_consensus/sac_model_line.h>
@@ -262,7 +263,7 @@ void ransac_detect(PointCloud cluster_to_detect)
 //    }
 }
 
-bool send(brio_assembly_vision::SendStampedPoseRequest  &req, brio_assembly_vision::SendStampedPoseResponse &res)
+bool send(brio_assembly_vision::TrasformStampedRequest  &req, brio_assembly_vision::TrasformStampedResponse &res)
 {
 
     ROS_INFO("Send TransformedPose");
@@ -270,14 +271,14 @@ bool send(brio_assembly_vision::SendStampedPoseRequest  &req, brio_assembly_visi
     Eigen::Quaternionf quat;
     quat = createQuaternion();
 
-      res.msg.pose.position.x = transformata_finala(0,3);
-      res.msg.pose.position.y = transformata_finala(1,3);
-      res.msg.pose.position.z = transformata_finala(2,3);
+      res.msg.transform.translation.x = transformata_finala(0,3);
+      res.msg.transform.translation.y = transformata_finala(1,3);
+      res.msg.transform.translation.z = transformata_finala(2,3);
 
-      res.msg.pose.orientation.w = (double)quat.w();
-      res.msg.pose.orientation.x = (double)quat.x();
-      res.msg.pose.orientation.y = (double)quat.y();
-      res.msg.pose.orientation.z = (double)quat.z();
+      res.msg.transform.rotation.w = (double)quat.w();
+      res.msg.transform.rotation.x = (double)quat.x();
+      res.msg.transform.rotation.y = (double)quat.y();
+      res.msg.transform.rotation.z = (double)quat.z();
 
   return true;
 

@@ -1,3 +1,0 @@
-string serviceName # brio_piece_class
----
-geometry_msgs/PoseStamped msg # brio_piece_stamped_transform
