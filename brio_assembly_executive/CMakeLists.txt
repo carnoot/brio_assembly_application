@@ -6,20 +6,30 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x  -Wno-deprecated -DBT_USE_DOU
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 
-find_package(Boost ${MIN_BOOST_VERSION} REQUIRED system filesystem regex)
+ find_package(Boost ${MIN_BOOST_VERSION} REQUIRED system filesystem regex)
 
 find_package(catkin REQUIRED COMPONENTS
   brio_assembly_vision
-  eigen
   geometry_msgs
   message_generation
-  pcl_conversions
-  pcl_msgs
-  pcl_ros
+  #pcl_conversions
+  #pcl_msgs
+  #pcl_ros
   roscpp
   rospy
   std_msgs
+  tf
 )
+
+############################################################################### Hack for QT Creator to include all relevant header and descriptor files ###############################################################################
+ #find all header and descriptor files
+ #execute_process(COMMAND find ${PROJECT_SOURCE_DIR}  -path "${PROJECT_SOURCE_DIR}/include/*" -name "*.h*" -or -name "*.cpp" OUTPUT_VARIABLE RS_FILES_STRING)
+ #cmake string to list; has to be done because otherwise add_custom_target would handle    RS_FILES_STRING as one single file, which leads to an error
+# string(REPLACE "\n" ";" RS_FILES_LIST ${RS_FILES_STRING})
+# add_custom_target(iairec_additional_files
+#   SOURCES
+#   ${RS_FILES_LIST}
+# )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -108,6 +118,11 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-#add_executable(ThreadExample src/ThreadExample.cpp)
-#target_link_libraries(ThreadExample ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+#add_executable(PublishTransform src/PublishTransform.cpp)
+#target_link_libraries(PublishTransform ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
+add_executable(nou src/nou.cpp)
+target_link_libraries(nou ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
+#add_executable(proba src/proba.cpp)
+#target_link_libraries(proba ${catkin_LIBRARIES})
