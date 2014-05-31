@@ -1,43 +1,21 @@
 brio_assembly_application
 =========================
+- crearea axelor in frameul brio__piece__frame ca normala sa fie exact aceasi cu normala pe MASA, iar a 3 a axa produsul vectorial a celor doua
+  - noua OX va fi normala la masa
+  - noua OZ sa fie de-alungul piesei
+    - sensul nu e important pentru ca gripper-ul este simetric
 
-  - waits for a transformation from "brio_piece_frame" relative to "base_link"
-   - in the main thread
- 
-  - calls the service moving the robot arm
+- close the gripper
+  pr2_controllers tutorials moving the gripper
 
-    - two_hand_ik_trajectory_executor
-      - in package.xml
-           CMakeLists.txt
-      - keep them commented out
+- lift the brio piece over the initial location
+  - to be defined an offset over the brio piece
 
-    - ├── ExecuteBothArmsCartesianIKTrajectory.srv
-      ├── ExecuteLeftArmCartesianIKTrajectory.srv
-      └── ExecuteRightArmCartesianIKTrajectory.srv
+- move the brio piece over the destination location
+  - to be defined the destination location
 
-    - two_hand_ik_trajectory_executor/ExecuteBothArmsCartesianIKTrajectory
+- move the brio piece into the destination location
 
-    - two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory
+- open the gripper
 
-       std_msgs/Header header
-         uint32 seq
-         time stamp
-         string frame_id 
-       geometry_msgs/Pose[] poses
-         geometry_msgs/Point  
-           float64 x
-           float64 y
-           float64 z
-         geometry_msgs/Quaternion orientation
-           float64 x
-           float64 y
-           float64 z
-           float64 w
-       ---
-       uint32 success
-
-    - two_hand_ik_trajectory_executor/ExecuteRightArmCartesianIKTrajectory
-
-    - frame_id  <- "base_link"
-    - position && orientation
-      - are "brio_piece_frame" relative to the "base_link" from TF
+- move the gripper over the destination location
