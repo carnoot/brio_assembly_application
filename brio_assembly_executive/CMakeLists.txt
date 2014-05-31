@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   tf
+  two_hand_ik_trajectory_executor
 )
 
 ############################################################################### Hack for QT Creator to include all relevant header and descriptor files ###############################################################################

@@ -68,7 +68,7 @@ void cloud_cb (const sensor_msgs::PointCloud2ConstPtr& input)
             // GLOBAL TRANSFORMATA FINALA //
             transformata_finala=calculate_transformation(cluster_vector[0]);
             ransac_detect(cluster_vector[0]);
-            finish_mv=false;
+            //finish_mv=false;
         }
     }
     //pub.publish(input);
@@ -270,8 +270,10 @@ bool send(brio_assembly_vision::TrasformStampedRequest  &req, brio_assembly_visi
 
     Eigen::Quaternionf quat;
     quat = createQuaternion();
+
     res.msg.child_frame_id = "brio_piece_frame";
     res.msg.header.frame_id = "head_mount_kinect_rgb_optical_frame";
+
     res.msg.transform.translation.x = transformata_finala(0,3);
     res.msg.transform.translation.y = transformata_finala(1,3);
     res.msg.transform.translation.z = transformata_finala(2,3);
@@ -302,6 +304,8 @@ Eigen::Quaternionf createQuaternion(){
             rotation(a,b) = transformata_finala(a,b);
 
     Eigen::Quaternionf quat (rotation);
+
+    quat.normalize();
 
     return quat;
 }

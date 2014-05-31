@@ -7,8 +7,8 @@
 #include <brio_assembly_vision/TrasformStamped.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
-//#include <two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory>
-//#include <two_hand_ik_trajectory_executor/ExecuteRightArmCartesianIKTrajectory>
+#include <two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory.h>
+#include <two_hand_ik_trajectory_executor/ExecuteRightArmCartesianIKTrajectory.h>
 
 class thread_class {
 
@@ -18,6 +18,7 @@ public:
     tf::StampedTransform transform;
     tf::TransformBroadcaster br;
     int shared_variable;
+    bool can_publish;
 
 public:
 
@@ -33,6 +34,7 @@ thread_class::thread_class() {
     std::cout << "Constructor of thread class!" << std::endl;
     this->my_thread = new boost::thread(
                 boost::bind(&thread_class::publishTransform, this));
+    this->can_publish = false;
 }
 
 thread_class::~thread_class() {
@@ -45,6 +47,8 @@ void thread_class::publishTransform(){
 
     while(ros::ok()){
         this->mut.lock();
+        this->transform.stamp_ = ros::Time::now();
+	if (this->can_publish)
         this->br.sendTransform(this->transform);
         //    this->br.sendTransform(this->transform, ros::Time::now(), this->parent_frame, this->child_frame);
         this->mut.unlock();
@@ -69,11 +73,12 @@ public:
     brio_assembly_vision::TrasformStamped stampedTransform;
 
     //#################### NOT INCLUDED ###################
-    //    two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory left_arm;
-    //    two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory right_arm;
+        two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory left_arm;
+        two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory right_arm;
     //#################### NOT INCLUDED ###################
 
     bool move_into_position;
+    bool can_call_vision_service;
     bool can_call_move_service;
     bool can_call_move_away_service;
 
@@ -100,6 +105,7 @@ Control::Control(){
                 "two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory"); //FOR LEFT ARM
 
     this->move_into_position = false;
+    this->can_call_vision_service = true;
     this->can_call_move_service = false;
     this->can_call_move_away_service = false;
 
@@ -114,11 +120,15 @@ Control::~Control(){
 void Control::callVisionService(){
 
     this->stampedTransform.request.serviceName = this->serviceName;
-    if (this->client.call(this->stampedTransform)) {
+    if (this->vision_client.call(this->stampedTransform)) {
         std::cout << "Successfully returned from VISION Service call!" << std::endl;
+        
         this->thread.mut.lock();
+        
         this->copyTransformIntoThread();
         this->can_call_move_service = true;
+        this->thread.can_publish = true;
+        
         this->thread.mut.unlock();
     }
     else{
@@ -129,17 +139,17 @@ void Control::callVisionService(){
 
 void Control::callMoveArmService(){
 
-    this->left_arm.poses[0].Point.x = this->basePieceTransform.getOrigin().getX();
-    this->left_arm.poses[0].Point.y = this->basePieceTransform.getOrigin().getY();
-    this->left_arm.poses[0].Point.z = this->basePieceTransform.getOrigin().getZ();
+    this->left_arm.request.poses[0].position.x = this->basePieceTransform.getOrigin().getX();
+    this->left_arm.request.poses[0].position.y = this->basePieceTransform.getOrigin().getY();
+    this->left_arm.request.poses[0].position.z = this->basePieceTransform.getOrigin().getZ();
 
-    this->left_arm.poses[0].orientation.x = this->basePieceTransform.getRotation().getX();
-    this->left_arm.poses[0].orientation.y = this->basePieceTransform.getRotation().getY();
-    this->left_arm.poses[0].orientation.z = this->basePieceTransform.getRotation().getZ();
-    this->left_arm.poses[0].orientation.w = this->basePieceTransform.getRotation().getW();
+    this->left_arm.request.poses[0].orientation.x = this->basePieceTransform.getRotation().getX();
+    this->left_arm.request.poses[0].orientation.y = this->basePieceTransform.getRotation().getY();
+    this->left_arm.request.poses[0].orientation.z = this->basePieceTransform.getRotation().getZ();
+    this->left_arm.request.poses[0].orientation.w = this->basePieceTransform.getRotation().getW();
 
     if (this->move_left_arm_client.call(this->left_arm)){
-        if (this->left_arm.success == 1){
+        if (this->left_arm.response.success == 1){
             std::cout << "SUCCESS in MOVING the ARM" << std::endl;
             this->can_call_move_away_service = true;
         }
@@ -154,9 +164,9 @@ void Control::callMoveArmService(){
 void Control::WaitForTfTransform(){
 
     try {
-        this->listener.waitForTransform(this->tfPieceFrameName,
+        this->tf_listener.waitForTransform(this->tfPieceFrameName,
                                         this->tfBaseLinkFrameName, ros::Time(0), ros::Duration(0.1));
-        this->listener.lookupTransform(this->tfPieceFrameName,
+        this->tf_listener.lookupTransform(this->tfPieceFrameName,
                                        this->tfBaseLinkFrameName, ros::Time(0), this->basePieceTransform);
     } catch (tf::TransformException &ex) {
         ROS_ERROR("%s", ex.what());
@@ -174,17 +184,26 @@ void Control::copyTransformIntoThread(){
                                                       this->stampedTransform.response.msg.transform.rotation.y,
                                                       this->stampedTransform.response.msg.transform.rotation.z,
                                                       this->stampedTransform.response.msg.transform.rotation.w));
-
+/*
     this->thread.child_frame = this->stampedTransform.response.msg.child_frame_id;
+
+    std::cout<< "child_frame " << this->thread.child_frame << std::endl;
 
     this->thread.parent_frame = this->stampedTransform.response.msg.header.frame_id;
 
-    this->thread.transform.frame_id_ = this->thread.parent_frame;
+    std::cout<< "parent_frame " << this->thread.parent_frame << std::endl;
+*/
 
-    this->thread.transform.child_frame_id_ = this->thread.child_frame;
+    this->thread.transform.frame_id_ = 
+          this->stampedTransform.response.msg.header.frame_id; //this->thread.parent_frame;
+
+    this->thread.transform.child_frame_id_ = //this->thread.child_frame;
+          this->stampedTransform.response.msg.child_frame_id;
 
     this->tfPieceFrameName = this->thread.child_frame;
 
+    std::cout<< "child_frame  " << this->thread.transform.child_frame_id_ <<std::endl;
+    std::cout<< "parent_frame " << this->thread.transform.frame_id_ << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -192,17 +211,29 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "CONTROL");
     Control contr;
     while (1){
-        contr.callVisionService();
+
+        if (contr.can_call_vision_service){
+            contr.callVisionService();
+            //contr.can_call_vision_service = false;
+        }
+
+        sleep(2);
+
+        ROS_INFO("Done with one loop ...");
+
+/*
         if (contr.can_call_move_service == true){
             contr.WaitForTfTransform();
             contr.callMoveArmService();
         }
 
+/*
         if (contr.can_call_move_away_service == true){
 
             contr.callMoveArmService();
 
         }
+*/
     }
 
 }
