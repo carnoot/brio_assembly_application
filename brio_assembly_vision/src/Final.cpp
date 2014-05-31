@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <ros/ros.h>
+#include <math.h>
 #include <pcl_conversions/pcl_conversions.h> //hydro
 #include <sensor_msgs/PointCloud2.h> //hydro
 #include <pcl/point_cloud.h>
@@ -43,6 +44,8 @@ void ransac_detect(PointCloud cluster_to_detect);
 Eigen::Matrix4d transformata_finala;
 
 Eigen::Quaternionf createQuaternion();
+Eigen::Quaternionf createQuaternion2();
+
 std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extraction(pcl::PointCloud <pcl::PointXYZRGB>::Ptr cloud);
 Eigen::Matrix4d calculate_transformation (PointCloud cloud_cluster);
 
@@ -111,7 +114,7 @@ std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extractio
     //  reg.setDistanceThreshold (10);
     //  reg.setPointColorThreshold (15); //color change , mic=>simte multe  schimbari de culoare
     //  reg.setRegionColorThreshold (30);
-    reg.setMinClusterSize (800);
+    reg.setMinClusterSize (500);
     reg.setMaxClusterSize(4900);
     std::vector <pcl::PointIndices> clusters;
     reg.extract (clusters);
@@ -172,13 +175,25 @@ Eigen::Matrix4d calculate_transformation (PointCloud cloud_cluster)
     //    std::cout<<std::endl<<"Eigen values:"<<std::endl<<es.eigenvalues()<<std::endl;
 
     Eigen::Matrix4d transformata_finala=Eigen::MatrixXd::Identity(4,4);
+ 
     for(int i=0;i<3;i++)
         for(int j=0;j<3;j++)
             transformata_finala(i,j)=result(i,j);
     for(int i=0;i<3;i++)
         transformata_finala(i,3)=xyz_centroid(i);
+
     std::cout<<"Final transform"<<std::endl<<transformata_finala<<std::endl;
 
+   //aux =transformata_finala.inverse();
+    Eigen::Matrix4d aux=Eigen::MatrixXd::Identity(4,4);
+
+    aux <<  0 , 0 , 1 , 0,
+            0 , 1 , 0 , 0,
+           -1 , 0 , 0 , 0,
+	    0 , 0 , 0 , 1;
+
+//    transformata_finala *= aux;	
+	 
     return transformata_finala;
 
 }
@@ -250,17 +265,18 @@ void ransac_detect(PointCloud cluster_to_detect)
         pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud, in_circle, *final);
         std::cout<<"Am gasit semicerc"<<std::endl;
     }
-
-    //  pcl::visualization::PCLVisualizer viewer ("ICP demo");
-    //  int v1(0); int v2(1);
-    //  viewer.createViewPort (0.0, 0.0, 0.5, 1.0, v1);
-    //  viewer.createViewPort (0.5, 0.0, 1.0, 1.0, v2);
-    //  //viewer.addCoordinateSystem(0.1,0);
-    //  viewer.addPointCloud (cloud, "cloud",v1);
-    //    viewer.addPointCloud (final, "final",v2);
-    //    while (!viewer.wasStopped ()) {
-    //        viewer.spinOnce ();
-    //    }
+/*
+      pcl::visualization::PCLVisualizer viewer ("ICP demo");
+      int v1(0); int v2(1);
+      viewer.createViewPort (0.0, 0.0, 0.5, 1.0, v1);
+      viewer.createViewPort (0.5, 0.0, 1.0, 1.0, v2);
+      viewer.addCoordinateSystem(0.1,0);
+      viewer.addPointCloud (cloud, "cloud",v1);
+        viewer.addPointCloud (final, "final",v2);
+        while (!viewer.wasStopped ()) {
+           viewer.spinOnce ();
+       }
+*/
 }
 
 bool send(brio_assembly_vision::TrasformStampedRequest  &req, brio_assembly_vision::TrasformStampedResponse &res)
@@ -269,7 +285,16 @@ bool send(brio_assembly_vision::TrasformStampedRequest  &req, brio_assembly_visi
     ROS_INFO("Send TransformedPose");
 
     Eigen::Quaternionf quat;
+    Eigen::Quaternionf rot_quat;
     quat = createQuaternion();
+    rot_quat = createQuaternion2();
+
+  //  Eigen::Quaternionf rotation_offset;
+//    rotation_offset = rotation_offset.inverse();
+
+    quat = quat.inverse();
+
+    quat = quat * rot_quat;
 
     res.msg.child_frame_id = "brio_piece_frame";
     res.msg.header.frame_id = "head_mount_kinect_rgb_optical_frame";
@@ -304,6 +329,20 @@ Eigen::Quaternionf createQuaternion(){
             rotation(a,b) = transformata_finala(a,b);
 
     Eigen::Quaternionf quat (rotation);
+
+    quat.normalize();
+
+    return quat;
+}
+
+Eigen::Quaternionf createQuaternion2(){
+    Eigen::Matrix3f aux;
+
+    aux <<  0 , 0 , -1,
+            0 , 1 , 0,
+            1 , 0 , 0;
+
+    Eigen::Quaternionf quat (aux);
 
     quat.normalize();
 

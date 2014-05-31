@@ -101,8 +101,8 @@ Control::Control(){
     this->vision_client = this->n.serviceClient<brio_assembly_vision::TrasformStamped>(
                 "/brio_assembly_vision");
 
-    this->move_left_arm_client = this->n.serviceClient<brio_assembly_vision::TrasformStamped>(
-                "two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory"); //FOR LEFT ARM
+    this->move_left_arm_client = this->n.serviceClient<two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory>(
+                "/two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory"); //FOR LEFT ARM
 
     this->move_into_position = false;
     this->can_call_vision_service = true;
@@ -139,6 +139,12 @@ void Control::callVisionService(){
 
 void Control::callMoveArmService(){
 
+    std::cout << "Callig Move arm Service!" << std::endl;
+
+    this->left_arm.request.header.seq = 0;
+    this->left_arm.request.header.stamp = ros::Time::now();
+    this->left_arm.request.header.frame_id = "base_link";
+
     this->left_arm.request.poses[0].position.x = this->basePieceTransform.getOrigin().getX();
     this->left_arm.request.poses[0].position.y = this->basePieceTransform.getOrigin().getY();
     this->left_arm.request.poses[0].position.z = this->basePieceTransform.getOrigin().getZ();
@@ -163,14 +169,24 @@ void Control::callMoveArmService(){
 
 void Control::WaitForTfTransform(){
 
+	std::cout << "Waiting for transform!" << std::endl;
+
     try {
         this->tf_listener.waitForTransform(this->tfPieceFrameName,
-                                        this->tfBaseLinkFrameName, ros::Time(0), ros::Duration(0.1));
+                                        this->tfBaseLinkFrameName, ros::Time(0), ros::Duration(5));
         this->tf_listener.lookupTransform(this->tfPieceFrameName,
                                        this->tfBaseLinkFrameName, ros::Time(0), this->basePieceTransform);
     } catch (tf::TransformException &ex) {
         ROS_ERROR("%s", ex.what());
     }
+
+    std::cout << "base: " << this->tfBaseLinkFrameName<< std::endl;
+
+    std::cout << "piece: " << this->tfPieceFrameName << std::endl;
+   
+    std::cout << "parent: " << this->basePieceTransform.frame_id_ << std::endl;
+
+    std::cout << "child: " << this->basePieceTransform.child_frame_id_ << std::endl;
 
 }
 
@@ -200,7 +216,7 @@ void Control::copyTransformIntoThread(){
     this->thread.transform.child_frame_id_ = //this->thread.child_frame;
           this->stampedTransform.response.msg.child_frame_id;
 
-    this->tfPieceFrameName = this->thread.child_frame;
+    this->tfPieceFrameName = this->thread.transform.child_frame_id_;
 
     std::cout<< "child_frame  " << this->thread.transform.child_frame_id_ <<std::endl;
     std::cout<< "parent_frame " << this->thread.transform.frame_id_ << std::endl;
@@ -217,11 +233,10 @@ int main(int argc, char** argv) {
             //contr.can_call_vision_service = false;
         }
 
-        sleep(2);
+        // sleep(2);
 
-        ROS_INFO("Done with one loop ...");
+        // ROS_INFO("Done with one loop ...");
 
-/*
         if (contr.can_call_move_service == true){
             contr.WaitForTfTransform();
             contr.callMoveArmService();
