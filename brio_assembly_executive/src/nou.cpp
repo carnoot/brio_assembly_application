@@ -154,6 +154,8 @@ void Control::callMoveArmService(){
     this->left_arm.request.poses[0].orientation.z = this->basePieceTransform.getRotation().getZ();
     this->left_arm.request.poses[0].orientation.w = this->basePieceTransform.getRotation().getW();
 
+    std::cout << this->move_left_arm_client.getService() << std::endl;
+
     if (this->move_left_arm_client.call(this->left_arm)){
         if (this->left_arm.response.success == 1){
             std::cout << "SUCCESS in MOVING the ARM" << std::endl;
