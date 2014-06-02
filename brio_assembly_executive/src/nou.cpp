@@ -7,8 +7,72 @@
 #include <brio_assembly_vision/TrasformStamped.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
-#include <two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory.h>
-#include <two_hand_ik_trajectory_executor/ExecuteRightArmCartesianIKTrajectory.h>
+
+#include <actionlib/client/simple_action_client.h>
+#include <pr2_controllers_msgs/Pr2GripperCommandAction.h>
+
+//#include <two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory.h>
+//#include <two_hand_ik_trajectory_executor/ExecuteRightArmCartesianIKTrajectory.h>
+
+typedef actionlib::SimpleActionClient<pr2_controllers_msgs::Pr2GripperCommandAction> GripperClient;
+
+class Gripper{
+
+private:
+    GripperClient* gripper_client_;
+
+public:
+    Gripper();
+    void open();
+    void close();
+    ~Gripper();
+
+};
+
+Gripper::Gripper(){
+
+    // DACA E PUS TRUE AL 2 LEA PARAMETRU, AUTOMAT APLICA ROS::SPIN PE ACEST THREAD (CARE ESTE DEJA APLICAT)
+    this->gripper_client_ = new GripperClient("l_gripper_controller/gripper_action", false);
+
+    while(!gripper_client_->waitForServer(ros::Duration(5.0))){
+        ROS_INFO("Waiting for the l_gripper_controller/gripper_action action server to come up");
+
+
+    }
+}
+
+Gripper::~Gripper(){
+    delete gripper_client_;
+}
+
+void Gripper::open(){
+    pr2_controllers_msgs::Pr2GripperCommandGoal open;
+    open.command.position = 0.08;
+    open.command.max_effort = -1.0;  // Do not limit effort (negative)
+
+    ROS_INFO("Sending open goal");
+
+    this->gripper_client_->sendGoal(open);
+    this->gripper_client_->waitForResult();
+    if(this->gripper_client_->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+        ROS_INFO("The gripper opened!");
+    else
+        ROS_INFO("The gripper failed to open.");
+}
+
+void Gripper::close(){
+    pr2_controllers_msgs::Pr2GripperCommandGoal squeeze;
+    squeeze.command.position = 0.0; // DE CALCULAT CAT ESTE NECESAR
+    squeeze.command.max_effort = 50.0;  // Close gently
+
+    ROS_INFO("Sending squeeze goal");
+    this->gripper_client_->sendGoal(squeeze);
+    this->gripper_client_->waitForResult();
+    if(this->gripper_client_->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+        ROS_INFO("The gripper closed!");
+    else
+        ROS_INFO("The gripper failed to close.");
+}
 
 class thread_class {
 
@@ -48,8 +112,8 @@ void thread_class::publishTransform(){
     while(ros::ok()){
         this->mut.lock();
         this->transform.stamp_ = ros::Time::now();
-	if (this->can_publish)
-        this->br.sendTransform(this->transform);
+        if (this->can_publish)
+            this->br.sendTransform(this->transform);
         //    this->br.sendTransform(this->transform, ros::Time::now(), this->parent_frame, this->child_frame);
         this->mut.unlock();
         r.sleep();
@@ -73,8 +137,8 @@ public:
     brio_assembly_vision::TrasformStamped stampedTransform;
 
     //#################### NOT INCLUDED ###################
-        two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory left_arm;
-        two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory right_arm;
+    //two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory left_arm;
+    //two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory right_arm;
     //#################### NOT INCLUDED ###################
 
     bool move_into_position;
@@ -101,8 +165,8 @@ Control::Control(){
     this->vision_client = this->n.serviceClient<brio_assembly_vision::TrasformStamped>(
                 "/brio_assembly_vision");
 
-    this->move_left_arm_client = this->n.serviceClient<two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory>(
-                "/execute_left_arm_cartesian_ik_trajectory"); //FOR LEFT ARM
+    //    this->move_left_arm_client = this->n.serviceClient<two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory>(
+    //                "/execute_left_arm_cartesian_ik_trajectory"); //FOR LEFT ARM
 
     this->move_into_position = false;
     this->can_call_vision_service = true;
@@ -122,13 +186,13 @@ void Control::callVisionService(){
     this->stampedTransform.request.serviceName = this->serviceName;
     if (this->vision_client.call(this->stampedTransform)) {
         std::cout << "Successfully returned from VISION Service call!" << std::endl;
-        
+
         this->thread.mut.lock();
-        
+
         this->copyTransformIntoThread();
         this->can_call_move_service = true;
         this->thread.can_publish = true;
-        
+
         this->thread.mut.unlock();
     }
     else{
@@ -137,95 +201,95 @@ void Control::callVisionService(){
 
 }
 
-void Control::callMoveArmService(){
-
-    double offset_lh_x = -0.22;
-    double offset_lh_y = 0.0;
-    double offset_lh_z = 0.0;
-    double rotation_lh_x = 0.0;
-    double rotation_lh_y = 0.0;
-    double rotation_lh_z = 0.0;
-
-    tf::Transform transform_lh;
-
-    transform_lh.setOrigin( tf::Vector3(offset_lh_x, offset_lh_y, offset_lh_z));
-    transform_lh.setRotation( tf::Quaternion (0.0, 0.0, 0.0, 1.0 ) );
-
-    std::cout << "Callig Move arm Service!" << std::endl;
-
-    // this->left_arm.request.header.seq = 0;
-    // this->left_arm.request.header.stamp = ros::Time::now();
-    this->left_arm.request.header.frame_id = "base_link";
-
-    tf::Transform brio_piece_transform;
-
-    geometry_msgs::Point position;
-    geometry_msgs::Quaternion orientation;
-
-    position.x = this->basePieceTransform.getOrigin().getX();
-    position.y = this->basePieceTransform.getOrigin().getY();
-    position.z = this->basePieceTransform.getOrigin().getZ();
-
-    orientation.x = this->basePieceTransform.getRotation().getX();
-    orientation.y = this->basePieceTransform.getRotation().getY();
-    orientation.z = this->basePieceTransform.getRotation().getZ();
-    orientation.w = this->basePieceTransform.getRotation().getW();
-
-    brio_piece_transform.setOrigin( tf::Vector3(position.x, position.y, position.z) );
-    brio_piece_transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w) );
-
-    tf::Transform brio_piece_transform_ready = brio_piece_transform * transform_lh;
-
-    position.x = brio_piece_transform_ready.getOrigin().getX();
-    position.y = brio_piece_transform_ready.getOrigin().getY();
-    position.z = brio_piece_transform_ready.getOrigin().getZ();
-
-    orientation.x = brio_piece_transform_ready.getRotation().getX();
-    orientation.y = brio_piece_transform_ready.getRotation().getY();
-    orientation.z = brio_piece_transform_ready.getRotation().getZ();
-    orientation.w = brio_piece_transform_ready.getRotation().getW();    
-
-/*
-    orientation.x = 0.0;
-    orientation.y = 0.0;
-    orientation.z = 0.0;
-    orientation.w = 1.0;
-*/
-
-    geometry_msgs::Pose pose;
-    pose.position = position;
-    pose.orientation = orientation;
-
-    this->left_arm.request.poses.push_back( pose );
-
-/*
-    this->left_arm.request.poses[0].position.x = this->basePieceTransform.getOrigin().getX();
-    this->left_arm.request.poses[0].position.y = this->basePieceTransform.getOrigin().getY();
-    this->left_arm.request.poses[0].position.z = this->basePieceTransform.getOrigin().getZ();
-
-    this->left_arm.request.poses[0].orientation.x = this->basePieceTransform.getRotation().getX();
-    this->left_arm.request.poses[0].orientation.y = this->basePieceTransform.getRotation().getY();
-    this->left_arm.request.poses[0].orientation.z = this->basePieceTransform.getRotation().getZ();
-    this->left_arm.request.poses[0].orientation.w = this->basePieceTransform.getRotation().getW();
-*/
-    std::cout << this->move_left_arm_client.getService() << std::endl;
-
-    if (this->move_left_arm_client.call(this->left_arm)){
-        if (this->left_arm.response.success == 1){
-            std::cout << "SUCCESS in MOVING the ARM" << std::endl;
-            this->can_call_move_away_service = true;
-        }
-        else
-        {
-            std::cout << "FAILURE in MOVING the ARM" << std::endl;
-        }
-    }
-
-}
+//void Control::callMoveArmService(){
+//
+//    double offset_lh_x = -0.22;
+//    double offset_lh_y = 0.0;
+//    double offset_lh_z = 0.0;
+//    double rotation_lh_x = 0.0;
+//    double rotation_lh_y = 0.0;
+//    double rotation_lh_z = 0.0;
+//
+//    tf::Transform transform_lh;
+//
+//    transform_lh.setOrigin( tf::Vector3(offset_lh_x, offset_lh_y, offset_lh_z));
+//    transform_lh.setRotation( tf::Quaternion (0.0, 0.0, 0.0, 1.0 ) );
+//
+//    std::cout << "Callig Move arm Service!" << std::endl;
+//
+//    // this->left_arm.request.header.seq = 0;
+//    // this->left_arm.request.header.stamp = ros::Time::now();
+//    this->left_arm.request.header.frame_id = "base_link";
+//
+//    tf::Transform brio_piece_transform;
+//
+//    geometry_msgs::Point position;
+//    geometry_msgs::Quaternion orientation;
+//
+//    position.x = this->basePieceTransform.getOrigin().getX();
+//    position.y = this->basePieceTransform.getOrigin().getY();
+//    position.z = this->basePieceTransform.getOrigin().getZ();
+//
+//    orientation.x = this->basePieceTransform.getRotation().getX();
+//    orientation.y = this->basePieceTransform.getRotation().getY();
+//    orientation.z = this->basePieceTransform.getRotation().getZ();
+//    orientation.w = this->basePieceTransform.getRotation().getW();
+//
+//    brio_piece_transform.setOrigin( tf::Vector3(position.x, position.y, position.z) );
+//    brio_piece_transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w) );
+//
+//    tf::Transform brio_piece_transform_ready = brio_piece_transform * transform_lh;
+//
+//    position.x = brio_piece_transform_ready.getOrigin().getX();
+//    position.y = brio_piece_transform_ready.getOrigin().getY();
+//    position.z = brio_piece_transform_ready.getOrigin().getZ();
+//
+//    orientation.x = brio_piece_transform_ready.getRotation().getX();
+//    orientation.y = brio_piece_transform_ready.getRotation().getY();
+//    orientation.z = brio_piece_transform_ready.getRotation().getZ();
+//    orientation.w = brio_piece_transform_ready.getRotation().getW();
+//
+///*
+//    orientation.x = 0.0;
+//    orientation.y = 0.0;
+//    orientation.z = 0.0;
+//    orientation.w = 1.0;
+//*/
+//
+//    geometry_msgs::Pose pose;
+//    pose.position = position;
+//    pose.orientation = orientation;
+//
+//    this->left_arm.request.poses.push_back( pose );
+//
+///*
+//    this->left_arm.request.poses[0].position.x = this->basePieceTransform.getOrigin().getX();
+//    this->left_arm.request.poses[0].position.y = this->basePieceTransform.getOrigin().getY();
+//    this->left_arm.request.poses[0].position.z = this->basePieceTransform.getOrigin().getZ();
+//
+//    this->left_arm.request.poses[0].orientation.x = this->basePieceTransform.getRotation().getX();
+//    this->left_arm.request.poses[0].orientation.y = this->basePieceTransform.getRotation().getY();
+//    this->left_arm.request.poses[0].orientation.z = this->basePieceTransform.getRotation().getZ();
+//    this->left_arm.request.poses[0].orientation.w = this->basePieceTransform.getRotation().getW();
+//*/
+//    std::cout << this->move_left_arm_client.getService() << std::endl;
+//
+//    if (this->move_left_arm_client.call(this->left_arm)){
+//        if (this->left_arm.response.success == 1){
+//            std::cout << "SUCCESS in MOVING the ARM" << std::endl;
+//            this->can_call_move_away_service = true;
+//        }
+//        else
+//        {
+//            std::cout << "FAILURE in MOVING the ARM" << std::endl;
+//        }
+//    }
+//
+//}
 
 void Control::WaitForTfTransform(){
 
-	std::cout << "Waiting for transform!" << std::endl;
+    std::cout << "Waiting for transform!" << std::endl;
 
     try {
         this->tf_listener.waitForTransform("base_link",        //"brio_piece_frame", //this->tfPieceFrameName,
@@ -238,11 +302,11 @@ void Control::WaitForTfTransform(){
     } catch (tf::TransformException &ex) {
         ROS_ERROR("%s", ex.what());
     }
-   
+
     std::cout << "base: " << this->tfBaseLinkFrameName<< std::endl;
 
     std::cout << "piece: " << this->tfPieceFrameName << std::endl;
-   
+
     std::cout << "parent: " << this->basePieceTransform.frame_id_ << std::endl;
 
     std::cout << "child: " << this->basePieceTransform.child_frame_id_ << std::endl;
@@ -259,7 +323,7 @@ void Control::copyTransformIntoThread(){
                                                       this->stampedTransform.response.msg.transform.rotation.y,
                                                       this->stampedTransform.response.msg.transform.rotation.z,
                                                       this->stampedTransform.response.msg.transform.rotation.w));
-/*
+    /*
     this->thread.child_frame = this->stampedTransform.response.msg.child_frame_id;
 
     std::cout<< "child_frame " << this->thread.child_frame << std::endl;
@@ -269,11 +333,11 @@ void Control::copyTransformIntoThread(){
     std::cout<< "parent_frame " << this->thread.parent_frame << std::endl;
 */
 
-    this->thread.transform.frame_id_ = 
-          this->stampedTransform.response.msg.header.frame_id; //this->thread.parent_frame;
+    this->thread.transform.frame_id_ =
+            this->stampedTransform.response.msg.header.frame_id; //this->thread.parent_frame;
 
     this->thread.transform.child_frame_id_ = //this->thread.child_frame;
-          this->stampedTransform.response.msg.child_frame_id;
+            this->stampedTransform.response.msg.child_frame_id;
 
     this->tfPieceFrameName = this->thread.transform.child_frame_id_;
 
@@ -299,10 +363,10 @@ int main(int argc, char** argv) {
 
         if (contr.can_call_move_service == true){
             contr.WaitForTfTransform();
-            contr.callMoveArmService();
+            //            contr.callMoveArmService();
         }
 
-/*
+        /*
         if (contr.can_call_move_away_service == true){
 
             contr.callMoveArmService();
