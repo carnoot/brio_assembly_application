@@ -346,7 +346,7 @@ Eigen::Matrix4d calculate_transformation(Eigen::Vector3d x_or_y_axe_vector, Eige
         transformata_finala(i,3)=xyz_centroid(i);
 
     std::cout<<std::endl<<"Transformation Matrix:"<<std::endl<<transformata_finala<<std::endl;
-
+/*
     float x0,y0,z0;
     x0=xyz_centroid[0];
     y0=xyz_centroid[1];
@@ -403,6 +403,7 @@ Eigen::Matrix4d calculate_transformation(Eigen::Vector3d x_or_y_axe_vector, Eige
     while (!viewer.wasStopped ()) {
         viewer.spinOnce ();
     }
+*/
 }
 std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extraction(pcl::PointCloud <pcl::PointXYZRGB>::Ptr cloud)
 {
@@ -438,10 +439,10 @@ std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extractio
     reg.setDistanceThreshold (10);
 //    reg.setPointColorThreshold (7); //color change , mic=>simte multe  schimbari de culoare
 //    reg.setRegionColorThreshold (30);
-//      reg.setPointColorThreshold (15); //color change , mic=>simte multe  schimbari de culoare
-//      reg.setRegionColorThreshold (30);
-          reg.setPointColorThreshold (6); //color change , mic=>simte multe  schimbari de culoare
-          reg.setRegionColorThreshold (20);
+      reg.setPointColorThreshold (15); //color change , mic=>simte multe  schimbari de culoare
+      reg.setRegionColorThreshold (30);
+  //        reg.setPointColorThreshold (6); //color change , mic=>simte multe  schimbari de culoare
+    //      reg.setRegionColorThreshold (20);
 
     reg.setMinClusterSize (1200);
     reg.setMaxClusterSize(4900);
@@ -463,14 +464,15 @@ std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > cluster_extractio
     }
 
     std::cout<<"Nmb of cluseters find:"<<pcd_vector.size()<<std::endl;
-    pcl::PointCloud <pcl::PointXYZRGB>::Ptr colored_cloud = reg.getColoredCloud ();
+ /*  
+ pcl::PointCloud <pcl::PointXYZRGB>::Ptr colored_cloud = reg.getColoredCloud ();
     pcl::visualization::CloudViewer viewer ("Cluster viewer");
     viewer.showCloud (colored_cloud);
     while (!viewer.wasStopped ())
     {
         boost::this_thread::sleep (boost::posix_time::microseconds (100));
     }
-
+*/
     return pcd_vector;
 }
 
@@ -501,7 +503,7 @@ std::string ransac_detect(PointCloud cluster_to_detect)
 
 
     sor2.setInputCloud (cloud_filtered);
-    sor2.setMeanK (300);
+    sor2.setMeanK (100); //300
     sor2.setStddevMulThresh (2);
     sor2.filter (*cloud);
 
@@ -523,13 +525,13 @@ std::string ransac_detect(PointCloud cluster_to_detect)
 
     pcl::RandomSampleConsensus<pcl::PointXYZRGB> ransac (model_line);
 //    ransac.setDistanceThreshold (0.0005); // here +- depends on quality of clouds
-    ransac.setDistanceThreshold (0.0008); // here +- depends on quality of clouds
+    ransac.setDistanceThreshold (0.0003); // here +- depends on quality of clouds
     ransac.computeModel();
     ransac.getInliers(inliers);
 
     pcl::RandomSampleConsensus<pcl::PointXYZRGB> ransac2 (model_circle);
 //    ransac2.setDistanceThreshold (0.0005); //here +- depends on quality of clouds
-    ransac2.setDistanceThreshold (0.0008); // here +- depends on quality of clouds
+    ransac2.setDistanceThreshold (0.0003); // here +- depends on quality of clouds
     ransac2.computeModel();
     ransac2.getInliers(in_circle);
 
@@ -559,14 +561,14 @@ std::string ransac_detect(PointCloud cluster_to_detect)
     {
         pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud, in_circle, *final);
         std::cout<<"Am gasit semicerc"<<std::endl;
-
+/*
         viewer.addPointCloud (cloud, "cloud",v1);
         viewer.addPointCloud (final, "final",v2);
         while (!viewer.wasStopped ())
         {
             viewer.spinOnce ();
         }
-
+*/
         return "Semicerc";
     }
 }
@@ -582,7 +584,7 @@ bool send(brio_assembly_vision::TrasformStampedRequest  &req, brio_assembly_visi
         if(cluster_vector.size()>0) //after moving objects size is decreased
         {
             PointCloud current_cluster;
-            int i=4; //start with the lowest index
+            int i=0; //start with the lowest index
             while(ransac_detect(cluster_vector[i])!=object_with_shape_requested && i<=cluster_vector.size()) //
             { i++; }
             //end while when cluster_vector[i] has the requested shape or when the search index is bigger then cluster_vector
