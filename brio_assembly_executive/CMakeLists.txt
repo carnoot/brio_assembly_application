@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(brio_assembly_executive)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x  -Wno-deprecated -DBT_USE_DOUBLE_PRECISION")
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -25,13 +26,13 @@ find_package(catkin REQUIRED COMPONENTS
 
 ############################################################################### Hack for QT Creator to include all relevant header and descriptor files ###############################################################################
  #find all header and descriptor files
- #execute_process(COMMAND find ${PROJECT_SOURCE_DIR}  -path "${PROJECT_SOURCE_DIR}/include/*" -name "*.h*" -or -name "*.cpp" OUTPUT_VARIABLE RS_FILES_STRING)
+ execute_process(COMMAND find ${PROJECT_SOURCE_DIR}  -path "${PROJECT_SOURCE_DIR}/include/*" -name "*.h*" -or -name "*.cpp" OUTPUT_VARIABLE RS_FILES_STRING)
  #cmake string to list; has to be done because otherwise add_custom_target would handle    RS_FILES_STRING as one single file, which leads to an error
-# string(REPLACE "\n" ";" RS_FILES_LIST ${RS_FILES_STRING})
-# add_custom_target(iairec_additional_files
-#   SOURCES
-#   ${RS_FILES_LIST}
-# )
+ string(REPLACE "\n" ";" RS_FILES_LIST ${RS_FILES_STRING})
+ add_custom_target(iairec_additional_files
+   SOURCES
+   ${RS_FILES_LIST}
+ )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -117,14 +118,22 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS} ${brio_assembly_executive_SOURCE_DIR}/include
 )
 
-#add_executable(PublishTransform src/PublishTransform.cpp)
-#target_link_libraries(PublishTransform ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+add_library(PieceFinalPoses src/PieceFinalPoses.cpp)
+add_library(RobotBasePoses src/RobotBasePoses.cpp)
+
+add_library(TfPublisher src/TfPublisher.cpp)
+target_link_libraries(TfPublisher PieceFinalPoses)
+
+add_library(Move src/Move.cpp)
+target_link_libraries(Move RobotBasePoses)
+
+add_library(Gripper src/Gripper.cpp)
 
 add_executable(nou src/nou.cpp)
-target_link_libraries(nou ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(nou ${catkin_LIBRARIES} ${Boost_LIBRARIES} PieceFinalPoses RobotBasePoses TfPublisher Move Gripper)
 
 #add_executable(proba src/proba.cpp)
 #target_link_libraries(proba ${catkin_LIBRARIES})
