@@ -1,6 +1,37 @@
 brio_assembly_application
 =========================
 
+- Move PR2 into PRE_VISION position
+
+- Move PR2 into VISION position
+
+- Call VisionService
+
+- Move Arm into pre_transform position before grasping
+
+- Move Arm into transform position for grasping
+
+- Close Gripper
+
+- Move Arm into AWAY position
+
+- Move PR2 into PRE_VISION position
+
+- Move PR2 into PRE_ASSEMBLY position
+
+- Move PR2 into ASSEMBLY position
+
+- Place Piece into defined position
+  - Move Piece into pre_defined position
+  - Move piece into defined position
+
+
+
+
+
+
+
+
 - lift the brio piece over the initial location
   - to be defined an offset over the brio piece
 

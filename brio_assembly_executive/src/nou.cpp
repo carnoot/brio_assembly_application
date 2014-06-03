@@ -23,11 +23,74 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveClient
 class PieceFinalPoses{
 
 public:
-    void createPrePosition();
+
+    std::string child_frame_round;
+    std::string child_frame_straight;
+    std::string frame_id;
+    std::string pre_frame_string;
+
+    tf::StampedTransform round_piece_pre_transform;
+    tf::StampedTransform round_piece_transform;
+    tf::StampedTransform straight_piece_pre_transform;
+    tf::StampedTransform straight_piece_transform;
+
+    std::vector<tf::StampedTransform> tf_transform_vector;
+
+    tfScalar z_offset;
+
+     PieceFinalPoses();
 };
 
+PieceFinalPoses::PieceFinalPoses(){
+
+    z_offset = 0.15;
+
+    this->frame_id = "base_link";
+    this->pre_frame_string = "pre_";
+    this->child_frame_straight = "straight_piece_dest";
+    this->child_frame_round = "round_piece_dest";
+
+    this->round_piece_transform.child_frame_id_ = this->child_frame_round;
+    this->round_piece_transform.frame_id_ = this->frame_id;
+    this->round_piece_transform.setOrigin(tf::Vector3(0.549, -0.057, 0.748));
+    this->round_piece_transform.setRotation(tf::Quaternion(-0.295, 0.645, 0.298, 0.639));
+
+    this->round_piece_pre_transform.child_frame_id_ = this->pre_frame_string + this->child_frame_round;
+    this->round_piece_pre_transform.frame_id_ = this->frame_id;
+    this->round_piece_pre_transform.setOrigin(tf::Vector3(this->round_piece_transform.getOrigin().getX(),
+                                                          this->round_piece_transform.getOrigin().getY(),
+                                                          this->round_piece_transform.getOrigin().getZ() + z_offset));
+    this->round_piece_pre_transform.setRotation(tf::Quaternion(this->round_piece_transform.getRotation().getX(),
+                                                               this->round_piece_transform.getRotation().getY(),
+                                                               this->round_piece_transform.getRotation().getZ(),
+                                                               this->round_piece_transform.getRotation().getW()));
+
+    this->straight_piece_transform.child_frame_id_ = this->child_frame_straight;
+    this->straight_piece_transform.frame_id_ = this->frame_id;
+    this->straight_piece_transform.setOrigin(tf::Vector3(0.570, 0.120, 0.697));
+    this->straight_piece_transform.setRotation(tf::Quaternion(0.512, -0.505, -0.489, -0.493));
+
+    this->round_piece_pre_transform.child_frame_id_ = this->pre_frame_string + this->child_frame_straight;
+    this->round_piece_pre_transform.frame_id_ = this->frame_id;
+    this->round_piece_pre_transform.setOrigin(tf::Vector3(this->straight_piece_transform.getOrigin().getX(),
+                                                          this->straight_piece_transform.getOrigin().getY(),
+                                                          this->straight_piece_transform.getOrigin().getZ() + z_offset));
+    this->round_piece_pre_transform.setRotation(tf::Quaternion(this->straight_piece_transform.getRotation().getX(),
+                                                               this->straight_piece_transform.getRotation().getY(),
+                                                               this->straight_piece_transform.getRotation().getZ(),
+                                                               this->straight_piece_transform.getRotation().getW()));
+
+    this->tf_transform_vector.resize(4);
+
+    this->tf_transform_vector[0] = this->round_piece_pre_transform;
+    this->tf_transform_vector[1] = this->round_piece_transform;
+    this->tf_transform_vector[2] = this->straight_piece_pre_transform;
+    this->tf_transform_vector[3] = this->straight_piece_transform;
+
+}
+
 class RobotBasePoses{
-private:
+public:
     std::string frame_id_string;
      geometry_msgs::PoseStamped pre_assembly;
      geometry_msgs::PoseStamped assembly;
@@ -88,11 +151,11 @@ RobotBasePoses::RobotBasePoses(){
 
 class Move{
 
-private:
+public:
     MoveClient* move_client;
+    RobotBasePoses poses;
 public:
     Move();
-    ~Move();
     void move(geometry_msgs::PoseStamped);
 
 };
@@ -191,16 +254,21 @@ public:
     tf::StampedTransform transform;
     tf::StampedTransform pre_transform;
     tf::TransformBroadcaster br;
+    tf::TransformBroadcaster br2;
+    PieceFinalPoses final_poses;
     int shared_variable;
     bool can_publish;
 
 public:
 
     boost::thread *my_thread;
+    boost::thread *my_thread2;
+
     std::mutex mut;
     TfPublisher();
     ~TfPublisher();
     void publishTransform();
+    void publishFinalTransform();
     void calculate_pre_transform();
 
 };
@@ -210,6 +278,7 @@ TfPublisher::TfPublisher() {
     this->pre_string = "pre_";
     this->my_thread = new boost::thread(
                 boost::bind(&TfPublisher::publishTransform, this));
+    this->my_thread2 = new boost::thread(boost::bind(&TfPublisher::publishFinalTransform, this));
     this->can_publish = false;
 }
 
@@ -219,11 +288,14 @@ TfPublisher::~TfPublisher() {
 
 void TfPublisher::calculate_pre_transform(){
 
+    tfScalar z_offset = 0.15;
+
     this->pre_transform.stamp_ = ros::Time::now();
 
     this->pre_transform.setOrigin(tf::Vector3(this->transform.getOrigin().getX(),
                                               this->transform.getOrigin().getY(),
-                                              this->transform.getOrigin().getZ()));
+                                              this->transform.getOrigin().getZ() + z_offset));
+
     this->pre_transform.setRotation(tf::Quaternion(this->transform.getRotation().getX(),
                                                    this->transform.getRotation().getY(),
                                                    this->transform.getRotation().getZ(),
@@ -235,7 +307,7 @@ void TfPublisher::calculate_pre_transform(){
 }
 
 void TfPublisher::publishTransform(){
-    std::cout << "Publishing TRANSFORM" << std::endl;
+    std::cout << "Publishing TRANSFORMS" << std::endl;
     ros::Rate r(30);
 
     while(ros::ok()){
@@ -248,6 +320,22 @@ void TfPublisher::publishTransform(){
         }
 
         this->mut.unlock();
+        r.sleep();
+    }
+}
+
+void TfPublisher::publishFinalTransform(){
+    std::cout << "Publishing FINAL PIECE TRANSFORM" << std::endl;
+    ros::Rate r(30);
+
+    while(ros::ok()){
+
+        for (int a = 0; a < this->final_poses.tf_transform_vector.size(); a++){
+            tf::StampedTransform transform;
+            transform = this->final_poses.tf_transform_vector[a];
+            transform.stamp_ = ros::Time::now();
+            this->br2.sendTransform(this->transform);
+}
         r.sleep();
     }
 }
@@ -289,7 +377,8 @@ public:
     void callVisionService();
     void copyTransformIntoThread();
     void WaitForTfTransform(std::string);
-    void callMoveArmService();
+    void CallMoveArmService(ros::ServiceClient&,
+                            two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory&);
 };
 
 
@@ -300,8 +389,11 @@ Control::Control(){
     this->vision_client = this->n.serviceClient<brio_assembly_vision::TrasformStamped>(
                 "/brio_assembly_vision");
 
-        this->move_left_arm_client = this->n.serviceClient<two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory>(
-                    "/execute_left_arm_cartesian_ik_trajectory"); //FOR LEFT ARM
+    this->move_left_arm_client = this->n.serviceClient<two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory>(
+                "/execute_left_arm_cartesian_ik_trajectory");
+
+    this->move_right_arm_client = this->n.serviceClient<two_hand_ik_trajectory_executor::ExecuteRightArmCartesianIKTrajectory>(
+                "/execute_right_arm_cartesian_ik_trajectory");
 
     this->move_into_position = false;
     this->can_call_vision_service = true;
@@ -325,7 +417,9 @@ void Control::callVisionService(){
         this->thread.mut.lock();
 
         this->copyTransformIntoThread();
-        this->can_call_move_service = true;
+
+//      this->can_call_move_service = true;
+
         this->thread.can_publish = true;
 
         this->thread.mut.unlock();
@@ -336,7 +430,8 @@ void Control::callVisionService(){
 
 }
 
-void Control::callMoveArmService(){
+void Control::CallMoveArmService(ros::ServiceClient& client,
+                                 two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory& arm){
 
     double offset_lh_x = -0.22;
     double offset_lh_y = 0.0;
@@ -344,6 +439,7 @@ void Control::callMoveArmService(){
     double rotation_lh_x = 0.0;
     double rotation_lh_y = 0.0;
     double rotation_lh_z = 0.0;
+    double grasp_offset = 0.05;
 
     tf::Transform transform_lh;
 
@@ -363,7 +459,7 @@ void Control::callMoveArmService(){
 
     position.x = this->basePieceTransform.getOrigin().getX();
     position.y = this->basePieceTransform.getOrigin().getY();
-    position.z = this->basePieceTransform.getOrigin().getZ();
+    position.z = this->basePieceTransform.getOrigin().getZ(); // +- GRASP_OFFSET $####################
 
     orientation.x = this->basePieceTransform.getRotation().getX();
     orientation.y = this->basePieceTransform.getRotation().getY();
@@ -384,32 +480,15 @@ void Control::callMoveArmService(){
     orientation.z = brio_piece_transform_ready.getRotation().getZ();
     orientation.w = brio_piece_transform_ready.getRotation().getW();
 
-/*
-    orientation.x = 0.0;
-    orientation.y = 0.0;
-    orientation.z = 0.0;
-    orientation.w = 1.0;
-*/
-
     geometry_msgs::Pose pose;
     pose.position = position;
     pose.orientation = orientation;
 
     this->left_arm.request.poses.push_back( pose );
 
-/*
-    this->left_arm.request.poses[0].position.x = this->basePieceTransform.getOrigin().getX();
-    this->left_arm.request.poses[0].position.y = this->basePieceTransform.getOrigin().getY();
-    this->left_arm.request.poses[0].position.z = this->basePieceTransform.getOrigin().getZ();
+    std::cout << client.getService() << std::endl;
 
-    this->left_arm.request.poses[0].orientation.x = this->basePieceTransform.getRotation().getX();
-    this->left_arm.request.poses[0].orientation.y = this->basePieceTransform.getRotation().getY();
-    this->left_arm.request.poses[0].orientation.z = this->basePieceTransform.getRotation().getZ();
-    this->left_arm.request.poses[0].orientation.w = this->basePieceTransform.getRotation().getW();
-*/
-    std::cout << this->move_left_arm_client.getService() << std::endl;
-
-    if (this->move_left_arm_client.call(this->left_arm)){
+    if (client.call(arm)){
         if (this->left_arm.response.success == 1){
             std::cout << "SUCCESS in MOVING the ARM" << std::endl;
             this->can_call_move_away_service = true;
@@ -472,19 +551,34 @@ int main(int argc, char** argv) {
 
     ros::init(argc, argv, "CONTROL");
     Control contr;
+    Move move;
+    Gripper gripper;
     while (1){
 
-        if (contr.can_call_vision_service){
-            contr.callVisionService();
-        }
+        move.move(move.poses.pre_vision);
 
-        if (contr.can_call_move_service == true){
-            contr.WaitForTfTransform(contr.thread.pre_transform.child_frame_id_);
-            contr.callMoveArmService();
-            contr.WaitForTfTransform(contr.thread.transform.child_frame_id_);
-            contr.callMoveArmService();
-        }
+        move.move(move.poses.vision);
 
+        contr.callVisionService();
+
+        contr.WaitForTfTransform(contr.thread.pre_transform.child_frame_id_);
+        contr.CallMoveArmService(contr.move_left_arm_client, contr.left_arm);
+
+        gripper.open();
+
+        contr.WaitForTfTransform(contr.thread.transform.child_frame_id_);
+        contr.CallMoveArmService(contr.move_left_arm_client, contr.left_arm);
+
+        gripper.close();
+
+        move.move(move.poses.pre_vision);
+
+        move.move(move.poses.pre_assembly);
+
+        move.move(move.poses.assembly);
+
+        contr.WaitForTfTransform(contr.thread.final_poses.child_frame_round);
+        contr.CallMoveArmService(contr.move_left_arm_client, contr.left_arm);
     }
 
 }
