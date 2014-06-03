@@ -1,12 +1,5 @@
 brio_assembly_application
 =========================
-- crearea axelor in frameul brio__piece__frame ca normala sa fie exact aceasi cu normala pe MASA, iar a 3 a axa produsul vectorial a celor doua
-  - noua OX va fi normala la masa
-  - noua OZ sa fie de-alungul piesei
-    - sensul nu e important pentru ca gripper-ul este simetric
-
-- close the gripper
-  pr2_controllers tutorials moving the gripper
 
 - lift the brio piece over the initial location
   - to be defined an offset over the brio piece
@@ -19,3 +12,22 @@ brio_assembly_application
 - open the gripper
 
 - move the gripper over the destination location
+
+
+-> vision location
+
+-> vision pre-location
+
+-> assembly location
+
+-> assembly pre-location
+
+
+-> 1. piece location - rounded piece - with right arm
+      - Translation: [0.549, -0.057, 0.748]
+      - Rotation:    [-0.295, 0.645, 0.298, 0.639]
+
+-> 2. piece location - straight piece - with left arm
+      - Translation: [0.570, 0.120, 0.697]
+      - Rotation:    [0.512, -0.505, -0.489, -0.493]
+
