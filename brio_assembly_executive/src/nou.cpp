@@ -10,11 +10,122 @@
 
 #include <actionlib/client/simple_action_client.h>
 #include <pr2_controllers_msgs/Pr2GripperCommandAction.h>
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
+#include <move_base_msgs/MoveBaseAction.h>
 
 #include <two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory.h>
 #include <two_hand_ik_trajectory_executor/ExecuteRightArmCartesianIKTrajectory.h>
 
 typedef actionlib::SimpleActionClient<pr2_controllers_msgs::Pr2GripperCommandAction> GripperClient;
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveClient;
+
+class PieceFinalPoses{
+
+public:
+    void createPrePosition();
+};
+
+class RobotBasePoses{
+private:
+    std::string frame_id_string;
+     geometry_msgs::PoseStamped pre_assembly;
+     geometry_msgs::PoseStamped assembly;
+     geometry_msgs::PoseStamped pre_vision;
+     geometry_msgs::PoseStamped vision;
+public:
+    RobotBasePoses();
+};
+
+RobotBasePoses::RobotBasePoses(){
+    this->frame_id_string = "/map";
+
+    this->pre_assembly.header.frame_id = this->frame_id_string;
+
+    this->pre_assembly.pose.position.x = -0.20;
+    this->pre_assembly.pose.position.y = -0.45;
+    this->pre_assembly.pose.position.z = 0.0;
+
+    this->pre_assembly.pose.orientation.x = 0.0;
+    this->pre_assembly.pose.orientation.y = 0.0;
+    this->pre_assembly.pose.orientation.z = 1.0;
+    this->pre_assembly.pose.orientation.w = 0.0;
+
+    this->assembly.header.frame_id = this->frame_id_string;
+
+    this->assembly.pose.position.x = -0.55;
+    this->assembly.pose.position.y = -0.45;
+    this->assembly.pose.position.z = 0.0;
+
+    this->assembly.pose.orientation.x = 0.0;
+    this->assembly.pose.orientation.y = 0.0;
+    this->assembly.pose.orientation.z = 1.0;
+    this->assembly.pose.orientation.w = 0.0;
+
+    this->pre_vision.header.frame_id = this->frame_id_string;
+
+    this->pre_vision.pose.position.x = -0.20;
+    this->pre_vision.pose.position.y = 1.295;
+    this->pre_vision.pose.position.z = 0.0;
+
+    this->pre_vision.pose.orientation.x = 0.0;
+    this->pre_vision.pose.orientation.y = 0.0;
+    this->pre_vision.pose.orientation.z = 1.0;
+    this->pre_vision.pose.orientation.w = 0.0;
+
+    this->vision.header.frame_id = this->frame_id_string;
+
+    this->vision.pose.position.x = -0.375;
+    this->vision.pose.position.x = 1.295;
+    this->vision.pose.position.x = 0.0;
+
+    this->vision.pose.orientation.x = 0.0;
+    this->vision.pose.orientation.y = 0.0;
+    this->vision.pose.orientation.z = 1.0;
+    this->vision.pose.orientation.w = 0.0;
+
+}
+
+class Move{
+
+private:
+    MoveClient* move_client;
+public:
+    Move();
+    ~Move();
+    void move(geometry_msgs::PoseStamped);
+
+};
+
+Move::Move(){
+
+    this->move_client = new MoveClient("/nav_pcontroller/move_base", true);
+
+    while (!this->move_client->waitForServer(ros::Duration(5.0))){
+        ROS_INFO("Waiting for the /nav_pcontroller/move_base action server to come up!");
+
+    }
+}
+
+void Move::move(geometry_msgs::PoseStamped pose){
+
+    move_base_msgs::MoveBaseAction my_action;
+
+    ROS_INFO("Sending MOVE Command!");
+
+    pose.header.stamp = ros::Time::now();
+    my_action.action_goal.goal.target_pose = pose;
+
+    this->move_client->sendGoal(my_action.action_goal.goal);
+    this->move_client->waitForResult();
+    if (this->move_client->getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
+        ROS_INFO("Moved into position!");
+    }
+    else{
+        ROS_INFO("Move failed!");
+    }
+
+}
 
 class Gripper{
 
@@ -31,13 +142,10 @@ public:
 
 Gripper::Gripper(){
 
-    // DACA E PUS TRUE AL 2 LEA PARAMETRU, AUTOMAT APLICA ROS::SPIN PE ACEST THREAD (CARE ESTE DEJA APLICAT)
-    this->gripper_client_ = new GripperClient("/l_gripper_controller/gripper_action", true);
+    this->gripper_client_ = new GripperClient("l_gripper_controller/gripper_action", true);
 
-    while(!gripper_client_->waitForServer(ros::Duration(5.0))){
+    while(!this->gripper_client_->waitForServer(ros::Duration(5.0))){
         ROS_INFO("Waiting for the l_gripper_controller/gripper_action action server to come up");
-
-
     }
 }
 
@@ -74,12 +182,14 @@ void Gripper::close(){
         ROS_INFO("The gripper failed to close.");
 }
 
-class thread_class {
+class TfPublisher {
 
 public:
     std::string child_frame;
     std::string parent_frame;
+    std::string pre_string;
     tf::StampedTransform transform;
+    tf::StampedTransform pre_transform;
     tf::TransformBroadcaster br;
     int shared_variable;
     bool can_publish;
@@ -88,33 +198,55 @@ public:
 
     boost::thread *my_thread;
     std::mutex mut;
-    thread_class();
-    ~thread_class();
+    TfPublisher();
+    ~TfPublisher();
     void publishTransform();
+    void calculate_pre_transform();
 
 };
 
-thread_class::thread_class() {
+TfPublisher::TfPublisher() {
     std::cout << "Constructor of thread class!" << std::endl;
+    this->pre_string = "pre_";
     this->my_thread = new boost::thread(
-                boost::bind(&thread_class::publishTransform, this));
+                boost::bind(&TfPublisher::publishTransform, this));
     this->can_publish = false;
 }
 
-thread_class::~thread_class() {
+TfPublisher::~TfPublisher() {
     std::cout << "Destructor of thread class!" << std::endl;
 }
 
-void thread_class::publishTransform(){
+void TfPublisher::calculate_pre_transform(){
+
+    this->pre_transform.stamp_ = ros::Time::now();
+
+    this->pre_transform.setOrigin(tf::Vector3(this->transform.getOrigin().getX(),
+                                              this->transform.getOrigin().getY(),
+                                              this->transform.getOrigin().getZ()));
+    this->pre_transform.setRotation(tf::Quaternion(this->transform.getRotation().getX(),
+                                                   this->transform.getRotation().getY(),
+                                                   this->transform.getRotation().getZ(),
+                                                   this->transform.getRotation().getW()));
+    this->pre_transform.frame_id_ = this->transform.frame_id_;
+
+    this->pre_transform.child_frame_id_ = this->pre_string + this->transform.child_frame_id_;
+
+}
+
+void TfPublisher::publishTransform(){
     std::cout << "Publishing TRANSFORM" << std::endl;
     ros::Rate r(30);
 
     while(ros::ok()){
         this->mut.lock();
         this->transform.stamp_ = ros::Time::now();
-        if (this->can_publish)
+        if (this->can_publish){
+            this->calculate_pre_transform();
             this->br.sendTransform(this->transform);
-        //    this->br.sendTransform(this->transform, ros::Time::now(), this->parent_frame, this->child_frame);
+            this->br.sendTransform(this->pre_transform);
+        }
+
         this->mut.unlock();
         r.sleep();
     }
@@ -122,6 +254,9 @@ void thread_class::publishTransform(){
 
 class Control{
 public:
+
+    RobotBasePoses robot_poses;
+
     std::string serviceName;
     std::string tfPieceFrameName;
     std::string tfBaseLinkFrameName;
@@ -146,14 +281,14 @@ public:
     bool can_call_move_service;
     bool can_call_move_away_service;
 
-    thread_class thread;
+    TfPublisher thread;
 
     Control();
     ~Control();
 
     void callVisionService();
     void copyTransformIntoThread();
-    void WaitForTfTransform();
+    void WaitForTfTransform(std::string);
     void callMoveArmService();
 };
 
@@ -174,7 +309,7 @@ Control::Control(){
     this->can_call_move_away_service = false;
 
     this->serviceName = "Vision";
-    this->tfBaseLinkFrameName = "base_link"; //TF FRAME NAME OF PR2 BASE_LINK ??
+    this->tfBaseLinkFrameName = "base_link";
 }
 
 Control::~Control(){
@@ -197,8 +332,6 @@ void Control::callVisionService(){
     }
     else{
         std::cout << "VISION Service call FAILED!" << std::endl;
-	 this->thread.transform.setOrigin(tf::Vector3(0, 0, 0));
-         this->thread.transform.setRotation(tf::Quaternion(0, 0, 0, 1));
     }
 
 }
@@ -267,7 +400,7 @@ void Control::callMoveArmService(){
 /*
     this->left_arm.request.poses[0].position.x = this->basePieceTransform.getOrigin().getX();
     this->left_arm.request.poses[0].position.y = this->basePieceTransform.getOrigin().getY();
-      this->left_arm.request.poses[0].position.z = this->basePieceTransform.getOrigin().getZ();
+    this->left_arm.request.poses[0].position.z = this->basePieceTransform.getOrigin().getZ();
 
     this->left_arm.request.poses[0].orientation.x = this->basePieceTransform.getRotation().getX();
     this->left_arm.request.poses[0].orientation.y = this->basePieceTransform.getRotation().getY();
@@ -289,29 +422,17 @@ void Control::callMoveArmService(){
 
 }
 
-void Control::WaitForTfTransform(){
+void Control::WaitForTfTransform(std::string child_frame){
 
     std::cout << "Waiting for transform!" << std::endl;
 
     try {
-        this->tf_listener.waitForTransform("base_link",        //"brio_piece_frame", //this->tfPieceFrameName,
-                                           "brio_piece_frame", //"base_link",        //this->tfBaseLinkFrameName,
-                                           ros::Time(0), ros::Duration(5));
+        this->tf_listener.waitForTransform("base_link", child_frame, ros::Time(0), ros::Duration(5));
 
-        this->tf_listener.lookupTransform("base_link",        //"brio_piece_frame", //this->tfPieceFrameName,
-                                          "brio_piece_frame", //"base_link",        //this->tfBaseLinkFrameName,
-                                          ros::Time(0), this->basePieceTransform);
+        this->tf_listener.lookupTransform("base_link", child_frame, ros::Time(0), this->basePieceTransform);
     } catch (tf::TransformException &ex) {
         ROS_ERROR("%s", ex.what());
     }
-
-    std::cout << "base: " << this->tfBaseLinkFrameName<< std::endl;
-
-    std::cout << "piece: " << this->tfPieceFrameName << std::endl;
-
-    std::cout << "parent: " << this->basePieceTransform.frame_id_ << std::endl;
-
-    std::cout << "child: " << this->basePieceTransform.child_frame_id_ << std::endl;
 
 }
 
@@ -351,34 +472,19 @@ int main(int argc, char** argv) {
 
     ros::init(argc, argv, "CONTROL");
     Control contr;
-    Gripper gripper;
     while (1){
 
         if (contr.can_call_vision_service){
-	    gripper.open();
             contr.callVisionService();
-            //contr.can_call_vision_service = false;
         }
-
-        sleep(1);
-
-        // ROS_INFO("Done with one loop ...");
-
 
         if (contr.can_call_move_service == true){
-            contr.WaitForTfTransform();
+            contr.WaitForTfTransform(contr.thread.pre_transform.child_frame_id_);
             contr.callMoveArmService();
-	    gripper.close();
+            contr.WaitForTfTransform(contr.thread.transform.child_frame_id_);
+            contr.callMoveArmService();
         }
 
-        /*
-        if (contr.can_call_move_away_service == true){
-
-            contr.callMoveArmService();
-
-        }
-*/
     }
 
 }
-

@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   two_hand_ik_trajectory_executor
+  pr2_controllers_msgs
 )
 
 ############################################################################### Hack for QT Creator to include all relevant header and descriptor files ###############################################################################
