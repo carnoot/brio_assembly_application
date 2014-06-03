@@ -7,9 +7,8 @@
 class RobotBasePoses{
 public:
     std::string frame_id_string;
-     geometry_msgs::PoseStamped pre_assembly;
+     geometry_msgs::PoseStamped away;
      geometry_msgs::PoseStamped assembly;
-     geometry_msgs::PoseStamped pre_vision;
      geometry_msgs::PoseStamped vision;
 public:
     RobotBasePoses();

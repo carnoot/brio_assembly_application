@@ -46,12 +46,18 @@ brio_assembly_application
 
 
 -> vision location
+   - Translation: [-0.300, 3.064, 0.000]
+   - Rotation:    [-0.002, -0.001, -0.703, 0.711]
 
--> vision pre-location
+-> away location
+
+   - Translation: [-0.000, 3.600, 0.000]
+   - Rotation:    [-0.002, -0.001, -0.703, 0.711]
+
 
 -> assembly location
-
--> assembly pre-location
+   - Translation: [1.120, 2.875, 0.001]
+   - Rotation:    [0.001, 0.001, -0.706, 0.708]
 
 
 -> 1. piece location - rounded piece - with right arm

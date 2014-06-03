@@ -15,6 +15,8 @@ TfPublisher::~TfPublisher() {
 
 void TfPublisher::calculate_pre_transform(){
 
+    std::cerr << "CALCULATE PRE TRANSFORM" << std::endl;
+
     tfScalar z_offset = 0.15;
 
     this->pre_transform.stamp_ = ros::Time::now();
@@ -26,10 +28,11 @@ void TfPublisher::calculate_pre_transform(){
     this->pre_transform.setRotation(tf::Quaternion(this->transform.getRotation().getX(),
                                                    this->transform.getRotation().getY(),
                                                    this->transform.getRotation().getZ(),
-                                                   this->transform.getRotation().getW()));
-    this->pre_transform.frame_id_ = this->transform.frame_id_;
+                                                   this->transform.getRotation().getW()).normalize());
 
-    this->pre_transform.child_frame_id_ = this->pre_string + this->transform.child_frame_id_;
+    this->pre_transform.frame_id_ = "custom_frame_id"; //this->transform.frame_id_;
+
+    this->pre_transform.child_frame_id_ = "custom_child_frame_id"; //this->pre_string + this->transform.child_frame_id_;
 
 }
 
@@ -39,11 +42,21 @@ void TfPublisher::publishTransform(){
 
     while(ros::ok()){
         this->mut.lock();
+        std::cerr << "CHILD FRAME ID:" << this->pre_transform.child_frame_id_ << std::endl;
+        std::cerr << "FRAME ID:" << this->pre_transform.frame_id_ << std::endl;
         this->transform.stamp_ = ros::Time::now();
         if (this->can_publish){
             this->calculate_pre_transform();
+            std::cerr << "CHILD FRAME ID AFTER CALCULATE:" << this->pre_transform.child_frame_id_ << std::endl;
+            std::cerr << "FRAME ID AFTER CALCULATE:" << this->pre_transform.frame_id_ << std::endl;
+            if (this->transform.child_frame_id_ != "" && this->transform.frame_id_ != ""){
+                ROS_INFO("ACUM PUBLIC!!!!!!!!!!!!!!!!!!");
             this->br.sendTransform(this->transform);
-            this->br.sendTransform(this->pre_transform);
+//            this->br.sendTransform(this->pre_transform);
+        }
+            if (this->pre_transform.child_frame_id_ != "" && this->pre_transform.frame_id_ != ""){
+                this->br.sendTransform(this->pre_transform);
+            }
         }
 
         this->mut.unlock();
@@ -52,16 +65,19 @@ void TfPublisher::publishTransform(){
 }
 
 void TfPublisher::publishFinalTransform(){
-    std::cout << "Publishing FINAL PIECE TRANSFORM" << std::endl;
     ros::Rate r(30);
 
     while(ros::ok()){
+
+//        std::cout << "Publishing FINAL PIECE TRANSFORM" << std::endl;
 
         for (int a = 0; a < this->final_poses.tf_transform_vector.size(); a++){
             tf::StampedTransform transform;
             transform = this->final_poses.tf_transform_vector[a];
             transform.stamp_ = ros::Time::now();
-            this->br2.sendTransform(this->transform);
+//            std::cerr << transform.child_frame_id_ << std::endl;
+            if (transform.child_frame_id_ != "" && transform.frame_id_ != "")
+            this->br2.sendTransform(transform);
 }
         r.sleep();
     }

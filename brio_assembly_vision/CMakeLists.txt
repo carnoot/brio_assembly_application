@@ -10,8 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   pcl_conversions
-  #pcl_msgs
-  #pcl_ros
+  pcl_msgs
+  pcl_ros
   roscpp
   rospy
   std_msgs
@@ -45,8 +45,8 @@ include_directories(
 )
 include_directories(/usr/include/vtk-5.8)
 
-#add_executable(Final src/Final.cpp)
-#target_link_libraries(Final
-#   ${catkin_LIBRARIES} ${VTK_LIBRARIES}
-# )
+add_executable(Final src/Final.cpp)
+target_link_libraries(Final
+   ${catkin_LIBRARIES} ${VTK_LIBRARIES}
+ )
 

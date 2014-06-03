@@ -232,9 +232,15 @@ int main(int argc, char** argv) {
     Gripper gripper;
     while (1){
 
-        move.move(move.poses.pre_vision);
+        ROS_INFO("MOVING TO AWAY");
+
+        move.move(move.poses.away);
+
+        ROS_INFO("MOVING TO VISION");
 
         move.move(move.poses.vision);
+
+        sleep(5);
 
         contr.callVisionService();
 
@@ -248,9 +254,7 @@ int main(int argc, char** argv) {
 
         gripper.close();
 
-        move.move(move.poses.pre_vision);
-
-        move.move(move.poses.pre_assembly);
+        move.move(move.poses.away);
 
         move.move(move.poses.assembly);
 
