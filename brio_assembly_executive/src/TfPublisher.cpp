@@ -17,22 +17,25 @@ void TfPublisher::calculate_pre_transform(){
 
     std::cerr << "CALCULATE PRE TRANSFORM" << std::endl;
 
-    tfScalar z_offset = 0.15;
+    tfScalar z_offset = -0.25;
 
     this->pre_transform.stamp_ = ros::Time::now();
 
     this->pre_transform.setOrigin(tf::Vector3(this->transform.getOrigin().getX(),
                                               this->transform.getOrigin().getY(),
-                                              this->transform.getOrigin().getZ() + z_offset));
+                                              this->transform.getOrigin().getZ()));
 
     this->pre_transform.setRotation(tf::Quaternion(this->transform.getRotation().getX(),
                                                    this->transform.getRotation().getY(),
                                                    this->transform.getRotation().getZ(),
                                                    this->transform.getRotation().getW()).normalize());
 
-    this->pre_transform.frame_id_ = "custom_frame_id"; //this->transform.frame_id_;
+    std::cout << "this->transform.frame_id: " << this->transform.frame_id_ << std::endl;
+    std::cout << "this->transform.child_frame_id: " << this->transform.child_frame_id_ << std::endl;
 
-    this->pre_transform.child_frame_id_ = "custom_child_frame_id"; //this->pre_string + this->transform.child_frame_id_;
+    this->pre_transform.frame_id_ = this->transform.frame_id_;
+
+    this->pre_transform.child_frame_id_ = this->pre_string + this->transform.child_frame_id_;
 
 }
 
@@ -42,13 +45,21 @@ void TfPublisher::publishTransform(){
 
     while(ros::ok()){
         this->mut.lock();
-        std::cerr << "CHILD FRAME ID:" << this->pre_transform.child_frame_id_ << std::endl;
-        std::cerr << "FRAME ID:" << this->pre_transform.frame_id_ << std::endl;
+
+//        std::cerr << "CHILD FRAME ID:" << this->pre_transform.child_frame_id_ << std::endl;
+//        std::cerr << "FRAME ID:" << this->pre_transform.frame_id_ << std::endl;
+
         this->transform.stamp_ = ros::Time::now();
         if (this->can_publish){
+
+            std::cerr << "CHILD FRAME ID:" << this->pre_transform.child_frame_id_ << std::endl;
+            std::cerr << "FRAME ID:" << this->pre_transform.frame_id_ << std::endl;
+
             this->calculate_pre_transform();
+
             std::cerr << "CHILD FRAME ID AFTER CALCULATE:" << this->pre_transform.child_frame_id_ << std::endl;
             std::cerr << "FRAME ID AFTER CALCULATE:" << this->pre_transform.frame_id_ << std::endl;
+
             if (this->transform.child_frame_id_ != "" && this->transform.frame_id_ != ""){
                 ROS_INFO("ACUM PUBLIC!!!!!!!!!!!!!!!!!!");
             this->br.sendTransform(this->transform);

@@ -187,7 +187,7 @@ Eigen::Vector3d estimate_plane_normals(PointCloud::Ptr cloud_f)
     pcl::PassThrough<pcl::PointXYZRGB> pass;
     pass.setInputCloud (cloud_f);
     pass.setFilterFieldName ("z");
-    pass.setFilterLimits (0.0, 1);
+    pass.setFilterLimits (0.0, 1.1);
     //pass.setFilterLimitsNegative (true);
     pass.filter (*cloud_filtered);
 
@@ -565,7 +565,7 @@ std::vector<Clusters> cluster_extraction(pcl::PointCloud <pcl::PointXYZRGB>::Ptr
     //Create the filtering object: downsample the dataset using a leaf size of 1cm
     pcl::VoxelGrid<pcl::PointXYZRGB> vg;
     vg.setInputCloud (cloud);
-    vg.setLeafSize (0.0015f, 0.0015f, 0.0015f);
+    vg.setLeafSize (0.0015f, 0.0015f, 0.0015f); //0.0015f toate cele 3
     vg.filter (*cloud_filtered);
     //*cloud_filtered=*cloud;
 
@@ -609,8 +609,9 @@ std::vector<Clusters> cluster_extraction(pcl::PointCloud <pcl::PointXYZRGB>::Ptr
 
     //std::cout<<"Am crapat!!!!!!!!!!!!!!!!!!!!!!"<<std::endl<<std::endl<<std::endl;
 
-    reg.setMinClusterSize (2000);
-    reg.setMaxClusterSize(15000);
+    reg.setMinClusterSize (1600); //2000
+    reg.setMaxClusterSize(6000);
+
     std::vector <pcl::PointIndices> clusters;
     reg.extract (clusters);
     //std::vector<PointCloud, Eigen::aligned_allocator<PointCloud> > pcd_vector;
@@ -735,22 +736,22 @@ std::string ransac_detect(PointCloud cluster_to_detect)
         std::cout<<"inliers line size="<<inliers.size()<<std::endl;
         std::cout<<"inliers circle size="<<in_circle.size()<<std::endl;
 
-        pcl::visualization::PCLVisualizer viewer ("ICP demo");
-        int v1(0); int v2(1);
-        viewer.createViewPort (0.0, 0.0, 0.5, 1.0, v1);
-        viewer.createViewPort (0.5, 0.0, 1.0, 1.0, v2);
+//        pcl::visualization::PCLVisualizer viewer ("ICP demo");
+//        int v1(0); int v2(1);
+//        viewer.createViewPort (0.0, 0.0, 0.5, 1.0, v1);
+//        viewer.createViewPort (0.5, 0.0, 1.0, 1.0, v2);
 
         if(inliers.size()>=in_circle.size())
         { // copies all inliers of the model computed to another PointCloud
             pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud_cluster, inliers, *final);
             std::cout<<"Am gasit linie"<<std::endl;
 
-            viewer.addPointCloud (cloud_cluster, "cloud",v1);
-            viewer.addPointCloud (final, "final",v2);
-            while (!viewer.wasStopped ())
-            {
-                viewer.spinOnce ();
-            }
+//            viewer.addPointCloud (cloud_cluster, "cloud",v1);
+//            viewer.addPointCloud (final, "final",v2);
+//            while (!viewer.wasStopped ())
+//            {
+//                viewer.spinOnce ();
+//            }
 
             return "Linie";
         }
@@ -759,12 +760,13 @@ std::string ransac_detect(PointCloud cluster_to_detect)
             pcl::copyPointCloud<pcl::PointXYZRGB>(*cloud_cluster, in_circle, *final);
             std::cout<<"Am gasit semicerc"<<std::endl;
 
-            viewer.addPointCloud (cloud_cluster, "cloud",v1);
-            viewer.addPointCloud (final, "final",v2);
-            while (!viewer.wasStopped ())
-            {
-                viewer.spinOnce ();
-            }
+//            viewer.addPointCloud (cloud_cluster, "cloud",v1);
+//            viewer.addPointCloud (final, "final",v2);
+
+//            while (!viewer.wasStopped ())
+//            {
+//                viewer.spinOnce ();
+//            }
 
             return "Semicerc";
         }
@@ -879,7 +881,7 @@ std::string ransac_detect(PointCloud cluster_to_detect)
 
     int main (int argc, char** argv)
     {
-         model.push_back("Linie");
+//         model.push_back("Linie");
         model.push_back("Semicerc");
         model.push_back("Mare");
         model.push_back("Mic");

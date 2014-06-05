@@ -67,8 +67,8 @@ target_link_libraries(Final
  )
 
 
-add_executable(Final src/Final.cpp)
-target_link_libraries(Final
-   ${catkin_LIBRARIES} ${VTK_LIBRARIES}
- )
+#add_executable(Final src/Final.cpp)
+#target_link_libraries(Final
+#   ${catkin_LIBRARIES} ${VTK_LIBRARIES}
+#)
 

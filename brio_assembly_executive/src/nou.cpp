@@ -16,6 +16,7 @@
 
 #include <two_hand_ik_trajectory_executor/ExecuteLeftArmCartesianIKTrajectory.h>
 #include <two_hand_ik_trajectory_executor/ExecuteRightArmCartesianIKTrajectory.h>
+#include <two_hand_ik_trajectory_executor/ExecuteBothArmsCartesianIKTrajectory.h>
 
 class Control{
 public:
@@ -31,6 +32,7 @@ public:
     ros::ServiceClient vision_client;
     ros::ServiceClient move_left_arm_client;
     ros::ServiceClient move_right_arm_client;
+    ros::ServiceClient move_away_arms;
 
     tf::StampedTransform basePieceTransform;
     tf::TransformListener tf_listener;
@@ -38,7 +40,8 @@ public:
 
     //#################### NOT INCLUDED ###################
     two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory left_arm;
-    two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory right_arm;
+    two_hand_ik_trajectory_executor::ExecuteRightArmCartesianIKTrajectory right_arm;
+    two_hand_ik_trajectory_executor::ExecuteBothArmsCartesianIKTrajectory both_arm;
     //#################### NOT INCLUDED ###################
 
     bool move_into_position;
@@ -53,11 +56,14 @@ public:
 
     void callVisionService();
     void copyTransformIntoThread();
-    void WaitForTfTransform(std::string);
+    void WaitForTfTransform(std::string &, int);
     void CallMoveLeftArmService(ros::ServiceClient&,
                             two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory&);
     void CallMoveRightArmService(ros::ServiceClient&,
                                  two_hand_ik_trajectory_executor::ExecuteRightArmCartesianIKTrajectory&);
+
+    void MoveAwayBothArms(ros::ServiceClient&,
+                          two_hand_ik_trajectory_executor::ExecuteBothArmsCartesianIKTrajectory&);
 };
 
 
@@ -73,6 +79,9 @@ Control::Control(){
 
     this->move_right_arm_client = this->n.serviceClient<two_hand_ik_trajectory_executor::ExecuteRightArmCartesianIKTrajectory>(
                 "/execute_right_arm_cartesian_ik_trajectory");
+
+    this->move_away_arms = this->n.serviceClient<two_hand_ik_trajectory_executor::ExecuteBothArmsCartesianIKTrajectory>(
+                "/execute_both_arms_cartesian_ik_trajectory");
 
     this->move_into_position = false;
     this->can_call_vision_service = true;
@@ -97,8 +106,6 @@ void Control::callVisionService(){
 
         this->copyTransformIntoThread();
 
-//      this->can_call_move_service = true;
-
         this->thread.can_publish = true;
 
         this->thread.mut.unlock();
@@ -112,6 +119,8 @@ void Control::callVisionService(){
 void Control::CallMoveLeftArmService(ros::ServiceClient& client,
                                  two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory& arm){
 
+    arm.request.poses.clear();
+
     double offset_lh_x = -0.22;
     double offset_lh_y = 0.0;
     double offset_lh_z = 0.0;
@@ -168,13 +177,66 @@ void Control::CallMoveLeftArmService(ros::ServiceClient& client,
     std::cout << client.getService() << std::endl;
 
     if (client.call(arm)){
-        if (this->left_arm.response.success == 1){
-            std::cout << "SUCCESS in MOVING the ARM" << std::endl;
+        if (arm.response.success == 1){
+            std::cout << "SUCCESS in MOVING the LEFT ARM!" << std::endl;
             this->can_call_move_away_service = true;
         }
         else
         {
-            std::cout << "FAILURE in MOVING the ARM" << std::endl;
+            std::cout << "FAILURE in MOVING the LEFT ARM!" << std::endl;
+        }
+    }
+
+}
+
+void Control::MoveAwayBothArms(ros::ServiceClient& client,
+                               two_hand_ik_trajectory_executor::ExecuteBothArmsCartesianIKTrajectory& arms){
+
+    arms.request.lh_poses.clear();
+    arms.request.rh_poses.clear();
+    arms.request.stop_at_pose.clear();
+
+    geometry_msgs::Pose left_pose;
+    geometry_msgs::Pose right_pose;
+
+    left_pose.position.x = 0.40;
+    left_pose.position.y = 0.70;
+    left_pose.position.z = 1.20;
+
+    left_pose.orientation.x = 0.0;
+    left_pose.orientation.y = 0.0;
+    left_pose.orientation.z = 0.0;
+    left_pose.orientation.w = 1.0;
+
+    right_pose.position.x = 0.40;
+    right_pose.position.y = -0.70;
+    right_pose.position.z = 1.20;
+
+    right_pose.orientation.x = 0.0;
+    right_pose.orientation.y = 0.0;
+    right_pose.orientation.z = 0.0;
+    right_pose.orientation.w = 1.0;
+
+//    arms.request.lh_poses.resize(1);
+    arms.request.lh_poses.push_back(left_pose);
+
+//    arms.request.rh_poses.resize(1);
+    arms.request.rh_poses.push_back(right_pose);
+
+    arms.request.header.frame_id = "base_link";
+
+    arms.request.stop_at_pose.push_back(1);
+
+    std::cout << client.getService() << std::endl;
+
+    if (client.call(arms)){
+        if (arms.response.success == 1){
+            std::cout << "SUCCESS in MOVING BOTH ARMS!" << std::endl;
+            this->can_call_move_away_service = true;
+        }
+        else
+        {
+            std::cout << "FAILURE in MOVING BOTH ARMS!" << std::endl;
         }
     }
 
@@ -183,6 +245,8 @@ void Control::CallMoveLeftArmService(ros::ServiceClient& client,
 void Control::CallMoveRightArmService(ros::ServiceClient& client,
                                  two_hand_ik_trajectory_executor::ExecuteRightArmCartesianIKTrajectory& arm){
 
+    arm.request.poses.clear();
+
     double offset_lh_x = -0.22;
     double offset_lh_y = 0.0;
     double offset_lh_z = 0.0;
@@ -198,9 +262,7 @@ void Control::CallMoveRightArmService(ros::ServiceClient& client,
 
     std::cout << "Callig Move arm Service!" << std::endl;
 
-    // this->left_arm.request.header.seq = 0;
-    // this->left_arm.request.header.stamp = ros::Time::now();
-    this->left_arm.request.header.frame_id = "base_link";
+    arm.request.header.frame_id = "base_link";
 
     tf::Transform brio_piece_transform;
 
@@ -234,33 +296,50 @@ void Control::CallMoveRightArmService(ros::ServiceClient& client,
     pose.position = position;
     pose.orientation = orientation;
 
-    this->left_arm.request.poses.push_back( pose );
+    arm.request.poses.push_back( pose );
 
     std::cout << client.getService() << std::endl;
 
     if (client.call(arm)){
-        if (this->left_arm.response.success == 1){
-            std::cout << "SUCCESS in MOVING the ARM" << std::endl;
+        if (arm.response.success == 1){
+            std::cout << "SUCCESS in MOVING the RIGHT ARM!" << std::endl;
             this->can_call_move_away_service = true;
         }
         else
         {
-            std::cout << "FAILURE in MOVING the ARM" << std::endl;
+            std::cout << "FAILURE in MOVING the RIGHT ARM!" << std::endl;
         }
     }
 
 }
 
-void Control::WaitForTfTransform(std::string child_frame){
+void Control::WaitForTfTransform(std::string& child_frame, int poz){
 
     std::cout << "Waiting for transform!" << std::endl;
 
     try {
-        this->tf_listener.waitForTransform("base_link", child_frame, ros::Time(0), ros::Duration(5));
+        this->tf_listener.waitForTransform("base_link", child_frame, ros::Time(0), ros::Duration(10));
 
         this->tf_listener.lookupTransform("base_link", child_frame, ros::Time(0), this->basePieceTransform);
+
+        if (poz == 0){
+        this->basePieceTransform.setOrigin(tf::Vector3(this->basePieceTransform.getOrigin().getX(),
+                                                       this->basePieceTransform.getOrigin().getY(),
+                                                       this->basePieceTransform.getOrigin().getZ() + 0.20));
+        }
+        if (poz == 1){
+            this->basePieceTransform.setOrigin(tf::Vector3(this->basePieceTransform.getOrigin().getX(),
+                                                           this->basePieceTransform.getOrigin().getY(),
+                                                           this->basePieceTransform.getOrigin().getZ() - 0.07));
+        }
+        if (poz == 2){
+            this->basePieceTransform.setOrigin(tf::Vector3(this->basePieceTransform.getOrigin().getX(),
+                                                           this->basePieceTransform.getOrigin().getY(),
+                                                           this->basePieceTransform.getOrigin().getZ())); // pozitia hardcodata de destinatie, nu mai trebuie adaugata nimic!!
+        }
     } catch (tf::TransformException &ex) {
-        ROS_ERROR("%s", ex.what());
+        std::cout << "INSTEAD of ROS ERROR in WaitForTfTransform!"<< std::endl;
+//        ROS_ERROR("%s", ex.what());
     }
 
 }
@@ -305,34 +384,53 @@ int main(int argc, char** argv) {
     Gripper gripper;
     while (1){
 
+        move.move(move.poses.away);
+
+        contr.MoveAwayBothArms(contr.move_away_arms, contr.both_arm);
+
+        gripper.open(gripper.getRightGripper());
+        gripper.open(gripper.getLeftGripper());
+
         ROS_INFO("MOVING TO AWAY");
 
-        move.move(move.poses.away);
+//        move.move(move.poses.away);
 
         ROS_INFO("MOVING TO VISION");
 
         move.move(move.poses.vision);
 
-        sleep(5);
+//        sleep(5);
 
         contr.callVisionService();
 
-        contr.WaitForTfTransform(contr.thread.pre_transform.child_frame_id_);
-        contr.CallMoveLeftArmService(contr.move_left_arm_client, contr.left_arm);
+        sleep(3);
 
-        gripper.open();
+        std::cout << "this->pre_transform.frame_id IN MAIN: " << contr.thread.pre_transform.frame_id_ << std::endl;
 
-        contr.WaitForTfTransform(contr.thread.transform.child_frame_id_);
-        contr.CallMoveLeftArmService(contr.move_left_arm_client, contr.left_arm);
+        contr.WaitForTfTransform(contr.thread.pre_transform.child_frame_id_, 0);
+        contr.CallMoveRightArmService(contr.move_right_arm_client, contr.right_arm);
 
-        gripper.close();
+        gripper.open(gripper.getRightGripper());
+
+        contr.WaitForTfTransform(contr.thread.transform.child_frame_id_, 1);
+        contr.CallMoveRightArmService(contr.move_right_arm_client, contr.right_arm);
+
+        gripper.close(gripper.getRightGripper());
+
+        contr.MoveAwayBothArms(contr.move_away_arms, contr.both_arm);
 
         move.move(move.poses.away);
 
         move.move(move.poses.assembly);
 
-        contr.WaitForTfTransform(contr.thread.final_poses.child_frame_round);
-        contr.CallMoveLeftArmService(contr.move_left_arm_client, contr.left_arm);
+        contr.WaitForTfTransform(contr.thread.final_poses.round_piece_pre_transform.child_frame_id_,0);
+        contr.CallMoveRightArmService(contr.move_right_arm_client, contr.right_arm);
+
+//        sleep(3);
+
+//        contr.WaitForTfTransform(contr.thread.final_poses.round_piece_transform.child_frame_id_,2);
+//        contr.CallMoveRightArmService(contr.move_right_arm_client, contr.right_arm);
+
     }
 
 }

@@ -10,12 +10,15 @@ typedef actionlib::SimpleActionClient<pr2_controllers_msgs::Pr2GripperCommandAct
 class Gripper{
 
 private:
-    GripperClient* gripper_client_;
+    GripperClient* left_gripper;
+    GripperClient* right_gripper;
 
 public:
     Gripper();
-    void open();
-    void close();
+    void open(GripperClient*);
+    void close(GripperClient*);
+    GripperClient* getLeftGripper();
+    GripperClient* getRightGripper();
     ~Gripper();
 
 };

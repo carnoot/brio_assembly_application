@@ -12,6 +12,8 @@ public:
     std::string child_frame_straight;
     std::string frame_id;
     std::string pre_frame_string;
+    std::string pre_round_child_frame_string;
+    std::string pre_straight_child_frame_string;
 
     tf::StampedTransform round_piece_pre_transform;
     tf::StampedTransform round_piece_transform;

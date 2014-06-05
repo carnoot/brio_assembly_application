@@ -5,7 +5,7 @@
  *      Author: blodow
  */
 
-#include </home/stefan/ros_ws/src/brio_assembly_application/brio_assembly_vision/include/brio_assembly_vision/DepthImageProjection.h>
+#include <brio_assembly_vision/DepthImageProjection.h>
 
 namespace iai_rs
 {
