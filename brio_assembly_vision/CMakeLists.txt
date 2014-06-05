@@ -14,11 +14,13 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   roscpp
   rospy
-  std_msgs
+  std_msgs 
+ cv_bridge
 )
 
 set(VTK_DIR "/usr/include/vtk-5.8")
 find_package(VTK REQUIRED)
+find_package(OpenCV REQUIRED)
 include(${VTK_USE_FILE})
 
 add_service_files(
@@ -42,11 +44,25 @@ catkin_package(
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
+ ${opencv_INCLUDE_DIRS}
 )
 include_directories(/usr/include/vtk-5.8)
 
-add_executable(Final src/Final.cpp)
+#############################################################################
+ ## Hack for QT Creator to include all relevant header and descriptor files ##
+ #############################################################################
+ #find all header and descriptor files
+ execute_process(COMMAND find ${PROJECT_SOURCE_DIR}  -path "${PROJECT_SOURCE_DIR}/include/*" -name "*.h*" -or -name "*.cpp" OUTPUT_VARIABLE RS_FILES_STRING)
+ #cmake string to list; has to be done because otherwise add_custom_target would handle    RS_FILES_STRING as one single file, which leads to an error
+ string(REPLACE "\n" ";" RS_FILES_LIST ${RS_FILES_STRING})
+ add_custom_target(project_additional
+   SOURCES
+   ${RS_FILES_LIST}
+ )
+
+
+add_executable(Final src/Final.cpp src/DepthImageProjection.cpp)
 target_link_libraries(Final
-   ${catkin_LIBRARIES} ${VTK_LIBRARIES}
+   ${catkin_LIBRARIES} ${VTK_LIBRARIES} ${OpenCV_LIBRARIES}
  )
 
