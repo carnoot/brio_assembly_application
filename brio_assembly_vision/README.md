@@ -25,13 +25,6 @@ brio_assembly_application
   - Move Piece into pre_defined position
   - Move piece into defined position
 
-
-
-
-
-
-
-
 - lift the brio piece over the initial location
   - to be defined an offset over the brio piece
 

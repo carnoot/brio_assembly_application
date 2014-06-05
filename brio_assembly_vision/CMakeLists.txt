@@ -45,6 +45,7 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
  ${opencv_INCLUDE_DIRS}
+ ${brio_assembly_vision_SOURCE_DIR}/include
 )
 include_directories(/usr/include/vtk-5.8)
 
@@ -60,9 +61,14 @@ include_directories(/usr/include/vtk-5.8)
    ${RS_FILES_LIST}
  )
 
-
 add_executable(Final src/Final.cpp src/DepthImageProjection.cpp)
 target_link_libraries(Final
    ${catkin_LIBRARIES} ${VTK_LIBRARIES} ${OpenCV_LIBRARIES}
+ )
+
+
+add_executable(Final src/Final.cpp)
+target_link_libraries(Final
+   ${catkin_LIBRARIES} ${VTK_LIBRARIES}
  )
 

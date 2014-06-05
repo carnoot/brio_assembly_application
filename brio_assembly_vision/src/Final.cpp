@@ -40,7 +40,8 @@
 #include <opencv2/opencv.hpp>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
-#include </home/stefan/ros_ws/src/brio_assembly_application/brio_assembly_vision/include/brio_assembly_vision/DepthImageProjection.h>
+#include <brio_assembly_vision/DepthImageProjection.h>
+
 ros::Publisher pub;
 bool request_a_new_cluster=true,final=false;
 bool find_cloud_from_kinect_head =false,color_find=false,depth_find=false,first_time=true;
