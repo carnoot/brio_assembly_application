@@ -54,8 +54,10 @@ public:
     void callVisionService();
     void copyTransformIntoThread();
     void WaitForTfTransform(std::string);
-    void CallMoveArmService(ros::ServiceClient&,
+    void CallMoveLeftArmService(ros::ServiceClient&,
                             two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory&);
+    void CallMoveRightArmService(ros::ServiceClient&,
+                                 two_hand_ik_trajectory_executor::ExecuteRightArmCartesianIKTrajectory&);
 };
 
 
@@ -107,8 +109,79 @@ void Control::callVisionService(){
 
 }
 
-void Control::CallMoveArmService(ros::ServiceClient& client,
+void Control::CallMoveLeftArmService(ros::ServiceClient& client,
                                  two_hand_ik_trajectory_executor::ExecuteLeftArmCartesianIKTrajectory& arm){
+
+    double offset_lh_x = -0.22;
+    double offset_lh_y = 0.0;
+    double offset_lh_z = 0.0;
+    double rotation_lh_x = 0.0;
+    double rotation_lh_y = 0.0;
+    double rotation_lh_z = 0.0;
+    double grasp_offset = 0.05;
+
+    tf::Transform transform_lh;
+
+    transform_lh.setOrigin( tf::Vector3(offset_lh_x, offset_lh_y, offset_lh_z));
+    transform_lh.setRotation( tf::Quaternion (0.0, 0.0, 0.0, 1.0 ) );
+
+    std::cout << "Callig Move arm Service!" << std::endl;
+
+    // this->left_arm.request.header.seq = 0;
+    // this->left_arm.request.header.stamp = ros::Time::now();
+    this->left_arm.request.header.frame_id = "base_link";
+
+    tf::Transform brio_piece_transform;
+
+    geometry_msgs::Point position;
+    geometry_msgs::Quaternion orientation;
+
+    position.x = this->basePieceTransform.getOrigin().getX();
+    position.y = this->basePieceTransform.getOrigin().getY();
+    position.z = this->basePieceTransform.getOrigin().getZ(); // +- GRASP_OFFSET $####################
+
+    orientation.x = this->basePieceTransform.getRotation().getX();
+    orientation.y = this->basePieceTransform.getRotation().getY();
+    orientation.z = this->basePieceTransform.getRotation().getZ();
+    orientation.w = this->basePieceTransform.getRotation().getW();
+
+    brio_piece_transform.setOrigin( tf::Vector3(position.x, position.y, position.z) );
+    brio_piece_transform.setRotation( tf::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w) );
+
+    tf::Transform brio_piece_transform_ready = brio_piece_transform * transform_lh;
+
+    position.x = brio_piece_transform_ready.getOrigin().getX();
+    position.y = brio_piece_transform_ready.getOrigin().getY();
+    position.z = brio_piece_transform_ready.getOrigin().getZ();
+
+    orientation.x = brio_piece_transform_ready.getRotation().getX();
+    orientation.y = brio_piece_transform_ready.getRotation().getY();
+    orientation.z = brio_piece_transform_ready.getRotation().getZ();
+    orientation.w = brio_piece_transform_ready.getRotation().getW();
+
+    geometry_msgs::Pose pose;
+    pose.position = position;
+    pose.orientation = orientation;
+
+    this->left_arm.request.poses.push_back( pose );
+
+    std::cout << client.getService() << std::endl;
+
+    if (client.call(arm)){
+        if (this->left_arm.response.success == 1){
+            std::cout << "SUCCESS in MOVING the ARM" << std::endl;
+            this->can_call_move_away_service = true;
+        }
+        else
+        {
+            std::cout << "FAILURE in MOVING the ARM" << std::endl;
+        }
+    }
+
+}
+
+void Control::CallMoveRightArmService(ros::ServiceClient& client,
+                                 two_hand_ik_trajectory_executor::ExecuteRightArmCartesianIKTrajectory& arm){
 
     double offset_lh_x = -0.22;
     double offset_lh_y = 0.0;
@@ -245,12 +318,12 @@ int main(int argc, char** argv) {
         contr.callVisionService();
 
         contr.WaitForTfTransform(contr.thread.pre_transform.child_frame_id_);
-        contr.CallMoveArmService(contr.move_left_arm_client, contr.left_arm);
+        contr.CallMoveLeftArmService(contr.move_left_arm_client, contr.left_arm);
 
         gripper.open();
 
         contr.WaitForTfTransform(contr.thread.transform.child_frame_id_);
-        contr.CallMoveArmService(contr.move_left_arm_client, contr.left_arm);
+        contr.CallMoveLeftArmService(contr.move_left_arm_client, contr.left_arm);
 
         gripper.close();
 
@@ -259,7 +332,7 @@ int main(int argc, char** argv) {
         move.move(move.poses.assembly);
 
         contr.WaitForTfTransform(contr.thread.final_poses.child_frame_round);
-        contr.CallMoveArmService(contr.move_left_arm_client, contr.left_arm);
+        contr.CallMoveLeftArmService(contr.move_left_arm_client, contr.left_arm);
     }
 
 }
