@@ -1,0 +1,3 @@
+string response_status #response
+---
+brio_assembly_vision_new/Container get_message #request

@@ -20,8 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   tf
-  two_hand_ik_trajectory_executor
-  pr2_controllers_msgs
+  #two_hand_ik_trajectory_executor
+  #pr2_controllers_msgs
 )
 
 ############################################################################### Hack for QT Creator to include all relevant header and descriptor files ###############################################################################
@@ -121,19 +121,19 @@ include_directories(
   ${catkin_INCLUDE_DIRS} ${brio_assembly_executive_SOURCE_DIR}/include
 )
 
-add_library(PieceFinalPoses src/PieceFinalPoses.cpp)
-add_library(RobotBasePoses src/RobotBasePoses.cpp)
+#add_library(PieceFinalPoses src/PieceFinalPoses.cpp)
+#add_library(RobotBasePoses src/RobotBasePoses.cpp)
 
-add_library(TfPublisher src/TfPublisher.cpp)
-target_link_libraries(TfPublisher PieceFinalPoses)
+#add_library(TfPublisher src/TfPublisher.cpp)
+#target_link_libraries(TfPublisher PieceFinalPoses)
 
-add_library(Move src/Move.cpp)
-target_link_libraries(Move RobotBasePoses)
+#add_library(Move src/Move.cpp)
+#target_link_libraries(Move RobotBasePoses)
 
-add_library(Gripper src/Gripper.cpp)
+#add_library(Gripper src/Gripper.cpp)
 
 add_executable(nou src/nou.cpp)
-target_link_libraries(nou ${catkin_LIBRARIES} ${Boost_LIBRARIES} PieceFinalPoses RobotBasePoses TfPublisher Move Gripper)
+#target_link_libraries(nou ${catkin_LIBRARIES} ${Boost_LIBRARIES} PieceFinalPoses RobotBasePoses TfPublisher Move Gripper)
 
 #add_executable(proba src/proba.cpp)
 #target_link_libraries(proba ${catkin_LIBRARIES})

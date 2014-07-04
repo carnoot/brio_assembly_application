@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>brio_assembly_vision</name>
+  <name>brio_assembly_vision_new</name>
   <version>0.0.0</version>
-  <description>The brio_assembly_vision package</description>
+  <description>The brio_assembly_vision_new package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but mutiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/brio_assembly_vision</url> -->
+  <!-- <url type="website">http://wiki.ros.org/brio_assembly_vision_new</url> -->
 
 
   <!-- Author tags are optional, mutiple are allowed, one per tag -->
@@ -39,7 +39,7 @@
   <!--   <run_depend>message_runtime</run_depend> -->
   <!-- Use test_depend for packages you need only for testing: -->
   <!--   <test_depend>gtest</test_depend> -->
-  <buildtool_depend>catkin</buildtool_depend>
+ <buildtool_depend>catkin</buildtool_depend>
   <build_depend>eigen</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>message_generation</build_depend>
