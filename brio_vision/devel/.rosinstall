@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/paul/ros_ws/src/brio_vision/devel/setup.sh

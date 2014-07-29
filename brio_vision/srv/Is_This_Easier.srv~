@@ -1,0 +1,3 @@
+string response_status #response
+---
+opencv_test_kinect/Container get_message #request

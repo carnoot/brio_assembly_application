@@ -1,0 +1,8 @@
+prefix=/home/paul/ros_ws/src/brio_vision/devel
+
+Name: brio_vision
+Description: Description of brio_vision
+Version: 0.0.0
+Cflags: -I/home/paul/ros_ws/src/brio_vision/devel/include
+Libs: -L/home/paul/ros_ws/src/brio_vision/devel/lib 
+Requires: message_runtime

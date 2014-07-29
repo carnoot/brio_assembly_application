@@ -1,0 +1,7 @@
+set(_CATKIN_CURRENT_PACKAGE "brio_vision")
+set(brio_vision_MAINTAINER "paul <paul@todo.todo>")
+set(brio_vision_DEPRECATED "")
+set(brio_vision_VERSION "0.0.0")
+set(brio_vision_BUILD_DEPENDS "pcl_ros" "eigen" "geometry_msgs" "message_generation" "pcl_conversions" "pcl_msgs" "roscpp" "rospy" "std_msgs")
+set(brio_vision_RUN_DEPENDS "pcl_ros" "eigen" "geometry_msgs" "pcl_conversions" "pcl_msgs" "roscpp" "rospy" "std_msgs" "message_runtime")
+set(brio_vision_BUILDTOOL_DEPENDS "catkin")

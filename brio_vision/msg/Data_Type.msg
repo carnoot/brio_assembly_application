@@ -1,0 +1,4 @@
+int32 center_index
+int32 head_conn_index
+int32 back_conn_index
+string piece_type
